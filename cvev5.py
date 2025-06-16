@@ -15,6 +15,18 @@ def parse_cve_id(cve):
         return year, number
     else:
         return None, None
+    
+def parse_cve_id_with_year(cve, minimal_year_wanted):
+    pattern = pattern = r"CVE-(\d{4})-(\d+)\.json"
+    match = re.match(pattern, cve)
+    if match:
+        read_year = match.group(1)
+        number = match.group(2)
+        if read_year < minimal_year_wanted:
+            return None, None
+        return read_year, number
+    else:
+        return None, None
 
 
 def is_semver(version):

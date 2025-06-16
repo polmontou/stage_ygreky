@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import get_status, parse_cve_id
+from cvev5 import get_status, parse_cve_id, parse_cve_id_with_year
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -14,7 +14,9 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input-dir", help="Input directory", required=True)
     parser.add_argument("-p", "--product", help="Product name", required=True)
     parser.add_argument("-e", "--vendor", help="Vendor name", default=None)
-    parser.add_argument("-r", "--version", help="Product version", required=True)
+    parser.add_argument("-y", "--minimal-year-wanted", help="Since when", default=None)
+    parser.add_argument("-r", "--version", help="Product version", default=None)
+    # parser.add_argument("-r", "--version", help="Product version", required=True)
     args = parser.parse_args()
 
     input_dir = args.input_dir
@@ -23,16 +25,29 @@ if __name__ == "__main__":
         vendor = args.vendor.lower()
     else:
         vendor = "*"
-    version = args.version
 
+    #test pour skip version // version = args.version
+    if args.version is not None:
+        version = args.version
+    else:
+        version = "*"
+    
+
+    if args.minimal_year_wanted is not None:
+        minimal_year_wanted = args.minimal_year_wanted
+    else:
+        minimal_year_wanted = 0
+    print(minimal_year_wanted)
     products = []
 
     print("Loading database...")
     for root, dirnames, filenames in os.walk(input_dir):
         for filename in filenames:
-            year, number = parse_cve_id(filename)
+            year, number = parse_cve_id_with_year(filename, minimal_year_wanted)
             if filename.endswith((".json")) and year is not None:
-                with open(os.path.join(root, filename)) as f:
+                # with open(os.path.join(root, filename)) as f:
+                # add errors='ignore' to skip a decoding error
+                with open(os.path.join(root, filename), errors="ignore") as f:
                     data = json.load(f)
                     try:
                         if "containers" in data:

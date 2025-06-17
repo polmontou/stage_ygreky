@@ -20,11 +20,11 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
     pattern = pattern = r"CVE-(\d{4})-(\d+)\.json"
     match = re.match(pattern, cve)
     if match:
-        read_year = match.group(1)
+        cve_year = match.group(1)
         number = match.group(2)
-        if read_year < minimal_year_wanted:
+        if cve_year < minimal_year_wanted:
             return None, None
-        return read_year, number
+        return cve_year, number
     else:
         return None, None
 
@@ -155,3 +155,21 @@ def get_status(db, product, vendor, version):
                 print(pr[3] + ": unknown status: " + product + " " + version)
             elif vuln_status == "not affected":
                 print(pr[3] + ": not affected " + product + " " + version)
+            print()
+            
+def get_publication_date(db, product, vendor, version):
+    for pr in db:
+        if pr[0].lower() == product and (
+            (vendor == "*") or (vendor == pr[1]["vendor"].lower())
+        ):
+            print(pr[3] + " - Publication date : " + parse_publication_date(pr[2]["cveMetadata"]["datePublished"]))
+            print()
+
+def parse_publication_date(date):
+    pattern = r"(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}).{5}"
+    match = re.match(pattern, date)
+    if match:
+        cve_date = match.group(1)
+        cve_hour = match.group(2)
+    return f"{cve_date} à {cve_hour}"
+    

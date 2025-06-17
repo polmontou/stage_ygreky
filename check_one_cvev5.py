@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import get_status, parse_cve_id, parse_cve_id_with_year
+from cvev5 import get_status, parse_cve_id, parse_cve_id_with_year, get_publication_date
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     if args.minimal_year_wanted is not None:
         minimal_year_wanted = args.minimal_year_wanted
     else:
-        minimal_year_wanted = 0
+        minimal_year_wanted = str(0)
     print(minimal_year_wanted)
     products = []
 
@@ -67,4 +67,6 @@ if __name__ == "__main__":
     products_sorted = sorted(products, key=lambda product: product[0])
     print("Product count: " + str(len(products)))
 
-    get_status(products_sorted, product, vendor, version)
+    # get_status(products_sorted, product, vendor, version)
+    get_publication_date(products_sorted, product, vendor, version)
+    

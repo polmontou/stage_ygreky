@@ -43,10 +43,10 @@ if __name__ == "__main__":
         
     products = []
     
-    print("Updating datas from distant repositories...")
-    git_pull_repo(cves_repo)
-    git_pull_repo(linux_repo)
-    print("Update done")
+    # print("Updating datas from distant repositories...")
+    # git_pull_repo(cves_repo)
+    # git_pull_repo(linux_repo)
+    # print("Update done")
     
     print("Loading database...")
     for root, dirnames, filenames in os.walk(input_dir):

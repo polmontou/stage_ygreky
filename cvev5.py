@@ -9,6 +9,9 @@ from datetime import datetime
 from dateutil.parser import parse
 from git import Repo
 
+cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
+linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
+
 def git_pull_repo(path):
     repo = Repo(path)
     repo.remotes.origin.pull()
@@ -31,15 +34,26 @@ def get_dates(db, product, vendor, version):
                 (vendor == "*") or (vendor == pr[1]["vendor"].lower())
             ):
                 commit_nr = pr[1]["versions"][0]["lessThan"]
-                print(commit_nr)
-                # commit_author_date, commit_author_hour =
-                # commit_committer_date, commit_committer_hour =
+                author_date, author_hour = get_author_date_from_commit(linux_repo, commit_nr)
+                committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit_nr)
                 cve_date, cve_hour = get_publication_date_from_CVE(pr)
+                
+                print(pr[3])
+                print("- Author date " + author_date + " à " + author_hour)
+                print("- Committer date : " + committer_date + " à " + committer_hour)
+                print("- CVE publication date : " + cve_date +" à " + cve_hour)
 
-                print(pr[3] + " - cve publication date : " + cve_date +" à " + cve_hour)
-                print()
+def get_author_date_from_commit(path, commit_nr):
+    repo = Repo(path)
+    commit = repo.commit(commit_nr)
+    author_date, author_hour = parse_date(str(commit.authored_datetime))
+    return author_date, author_hour
 
-# def get_author_date_from_commit():
+def get_committer_date_from_commit(path, commit_nr):
+    repo = Repo(path)
+    commit = repo.commit(commit_nr)
+    commit_date, commit_hour = parse_date(str(commit.authored_datetime))
+    return commit_date, commit_hour
 
 def get_publication_date_from_CVE(pr):
     cve_date, cve_hour = parse_date(pr[2]["cveMetadata"]["datePublished"])
@@ -49,7 +63,7 @@ def get_publication_date_from_CVE(pr):
 def parse_date(date):
     parse_date = parse(date)
     parsed_date = parse_date.strftime('%Y-%m-%d')
-    parsed_hour = parse_date.strftime('%H:%M:%S')
+    parsed_hour = parse_date.strftime('%H:%M')
 
     return parsed_date, parsed_hour
 

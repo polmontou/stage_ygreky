@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import get_status, parse_cve_id, parse_cve_id_with_year, get_publication_date
+from cvev5 import get_status, parse_cve_id, parse_cve_id_with_year, get_publication_date, creation_result_directory_pathlib
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -37,36 +37,37 @@ if __name__ == "__main__":
         minimal_year_wanted = args.minimal_year_wanted
     else:
         minimal_year_wanted = str(0)
-    print(minimal_year_wanted)
+        
     products = []
 
-    print("Loading database...")
-    for root, dirnames, filenames in os.walk(input_dir):
-        for filename in filenames:
-            year, number = parse_cve_id_with_year(filename, minimal_year_wanted)
-            if filename.endswith((".json")) and year is not None:
-                # with open(os.path.join(root, filename)) as f:
-                # add errors='ignore' to skip a decoding error
-                with open(os.path.join(root, filename), errors="ignore") as f:
-                    data = json.load(f)
-                    try:
-                        if "containers" in data:
-                            if "cna" in data["containers"]:
-                                if "affected" in data["containers"]["cna"]:
-                                    # print (data['containers']['cna']['affected'][0])
-                                    for x in data["containers"]["cna"]["affected"]:
-                                        products.append(
-                                            (x["product"].lower(), x, data, filename)
-                                        )
+    # print("Loading database...")
+    # for root, dirnames, filenames in os.walk(input_dir):
+    #     for filename in filenames:
+    #         year, number = parse_cve_id_with_year(filename, minimal_year_wanted)
+    #         if filename.endswith((".json")) and year is not None:
+    #             # with open(os.path.join(root, filename)) as f:
+    #             # add errors='ignore' to skip a decoding error
+    #             with open(os.path.join(root, filename)) as f:
+    #                 data = json.load(f)
+    #                 try:
+    #                     if "containers" in data:
+    #                         if "cna" in data["containers"]:
+    #                             if "affected" in data["containers"]["cna"]:
+    #                                 # print (data['containers']['cna']['affected'][0])
+    #                                 for x in data["containers"]["cna"]["affected"]:
+    #                                     products.append(
+    #                                         (x["product"].lower(), x, data, filename)
+    #                                     )
 
-                    except KeyError:
-                        pass
-                    except TypeError:
-                        pass
-    print("Database loaded")
-    products_sorted = sorted(products, key=lambda product: product[0])
-    print("Product count: " + str(len(products)))
+    #                 except KeyError:
+    #                     pass
+    #                 except TypeError:
+    #                     pass
+    # print("Database loaded")
+    # products_sorted = sorted(products, key=lambda product: product[0])
+    # print("Product count: " + str(len(products)))
 
     # get_status(products_sorted, product, vendor, version)
-    get_publication_date(products_sorted, product, vendor, version)
+    # get_publication_date(products_sorted, product, vendor, version)
     
+    creation_result_directory_pathlib()

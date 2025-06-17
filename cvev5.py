@@ -4,6 +4,8 @@
 import json
 import os
 import re
+from pathlib import Path
+from datetime import datetime
 
 
 def parse_cve_id(cve):
@@ -172,4 +174,10 @@ def parse_publication_date(date):
         cve_date = match.group(1)
         cve_hour = match.group(2)
     return f"{cve_date} à {cve_hour}"
+
+def creation_result_directory_pathlib():
+    path = Path.cwd()
+    date = datetime.today().strftime('%Y-%m-%d')
+    print(date)
+    
     

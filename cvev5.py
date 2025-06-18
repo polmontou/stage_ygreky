@@ -159,10 +159,11 @@ def create_commit_patch_db(db, product, vendor, version, year):
 def load_patch(repository, commit_a, commit_b):
     patch = ""
     repo = Repo(repository)
-    commit = repo.commit(commit_a)
-    diffs = commit.diff(commit_b)
-    for diff in diffs:
-        patch += diff.diff.decode()
+    # commit = repo.commit(commit_a)
+    # diffs = commit.diff(commit_b)
+    # for diff in diffs:
+    #     patch += diff.diff.decode()
+    patch = repo.git.diff(commit_b, commit_a)
     return patch
     
     

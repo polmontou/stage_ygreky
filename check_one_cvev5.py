@@ -53,7 +53,6 @@ if __name__ == "__main__":
         for filename in filenames:
             year, number = parse_cve_id_with_year(filename, minimal_year_wanted)
             if filename.endswith((".json")) and year is not None:
-                # with open(os.path.join(root, filename)) as f:
                 # add errors='ignore' to skip a decoding error
                 with open(os.path.join(root, filename)) as f:
                     data = json.load(f)
@@ -76,7 +75,5 @@ if __name__ == "__main__":
     products_sorted = sorted(products, key=lambda product: product[0])
     print("Product count: " + str(len(products)))
 
-    # get_status(products_sorted, product, vendor, version)
-    get_dates(products_sorted, product, vendor, version)
+    get_dates(products_sorted, product, vendor, version, year)
     
-    create_result_file()

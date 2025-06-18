@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
 from git import Repo
+import csv
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
@@ -28,31 +29,53 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
     else:
         return None, None
 
-def get_dates(db, product, vendor, version):
+def get_dates(db, product, vendor, version, year):
+    result_file_path = create_result_file(product, year)
     for pr in db:
-            if pr[0].lower() == product and (
-                (vendor == "*") or (vendor == pr[1]["vendor"].lower())
-            ):
-                commit_nr = pr[1]["versions"][0]["lessThan"]
-                author_date, author_hour = get_author_date_from_commit(linux_repo, commit_nr)
-                committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit_nr)
-                cve_date, cve_hour = get_publication_date_from_CVE(pr)
+        line_datas = []
+        commits = []
+        if pr[0].lower() == product and (
+            (vendor == "*") or (vendor == pr[1]["vendor"].lower())
+        ):
+            for x in pr[1]["versions"] :
+                for key in x :
+                    if key == "lessThan":
+                        commits.append(x[key])
+            
+            #looking for CVE publication date
+            cve_date, cve_hour = get_publication_date_from_CVE(pr)
+            line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
+                #writing them in the CSV file
+            write_date(result_file_path, line_datas)
+            print(pr[3])
+            print("- CVE publication date : " + cve_date +" à " + cve_hour)
+            
+            #looking for each "lessThan" commit dates (author + committer)
+            for commit in commits:
+                author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
+                committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
+                    #writing author date in CSV file
+                line_datas = ["commit", commit, "AD", author_date, author_hour]
+                write_date(result_file_path, line_datas)
                 
-                print(pr[3])
-                print("- Author date " + author_date + " à " + author_hour)
+                    #writing committer date in CSV file
+                line_datas = ["commit", commit, "CD", committer_date, committer_hour]
+                write_date(result_file_path, line_datas)
+                print(f"Commit : {commit}")
+                print("- Author date : " + author_date + " à " + author_hour)
                 print("- Committer date : " + committer_date + " à " + committer_hour)
-                print("- CVE publication date : " + cve_date +" à " + cve_hour)
+                del author_date, author_hour, committer_date, committer_hour
 
-def get_author_date_from_commit(path, commit_nr):
+def get_author_date_from_commit(path, commit):
     repo = Repo(path)
-    commit = repo.commit(commit_nr)
+    commit = repo.commit(commit)
     author_date, author_hour = parse_date(str(commit.authored_datetime))
     return author_date, author_hour
 
-def get_committer_date_from_commit(path, commit_nr):
+def get_committer_date_from_commit(path, commit):
     repo = Repo(path)
-    commit = repo.commit(commit_nr)
-    commit_date, commit_hour = parse_date(str(commit.authored_datetime))
+    commit = repo.commit(commit)
+    commit_date, commit_hour = parse_date(str(commit.committed_datetime))
     return commit_date, commit_hour
 
 def get_publication_date_from_CVE(pr):
@@ -67,20 +90,29 @@ def parse_date(date):
 
     return parsed_date, parsed_hour
 
-def create_result_file():
+def create_result_file(product, year):
     path = Path.cwd().parent/"results"
     date = datetime.today().strftime('%Y-%m-%d')
-    results_file_name = path/f"{date}_results.csv"
+    results_file_name = path/f"{date}_{product}_since{year}results.csv"
 
     path.mkdir(exist_ok=True)
     if results_file_name.exists():
         results_file_name.unlink()
         results_file_name.touch()
         print(f"\"{results_file_name.name}\" already exists : file replaced")
+        return results_file_name
     else :
         results_file_name.touch()
         print(f"\"{results_file_name.name}\" file created")
+        return results_file_name
 
+def write_date(path, dates):
+    with open(path, 'a', newline='') as csvfile:
+        date_writer = csv.writer(csvfile, delimiter = ',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        date_writer.writerow(dates)
+    
+
+    
 # def parse_cve_id(cve):
 #     pattern = pattern = r"CVE-(\d{4})-(\d+)\.json"
 #     match = re.match(pattern, cve)

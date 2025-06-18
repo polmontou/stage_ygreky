@@ -162,7 +162,7 @@ def load_patch(repository, commit_a, commit_b):
     commit = repo.commit(commit_a)
     diffs = commit.diff(commit_b)
     for diff in diffs:
-        patch += diff.decode()
+        patch += diff.diff.decode()
     return patch
     
     

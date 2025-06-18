@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
-from git import Repo
+from git import Repo, diff
 import csv
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
@@ -35,6 +35,7 @@ def get_dates(db, product, vendor, version, year):
     for pr in db:
         line_datas = []
         commits = []
+        
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
         ):
@@ -49,8 +50,9 @@ def get_dates(db, product, vendor, version, year):
             line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
             write_date(result_file_path, line_datas)
             
-            #looking for each "lessThan" commit dates (author + committer)
+            
             for commit in commits:
+                #looking for each "lessThan" commit dates (author + committer)
                 author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
                 committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
                 
@@ -110,4 +112,43 @@ def write_date(path, dates):
         date_writer.writerow(dates)
     
 
+def create_commit_patch_db(db, product, vendor, version, year):
+    patch_directory = Path.cwd()/"CVE_patchs"
+    patch_directory.mkdir(exist_ok=True)
     
+    
+    for pr in db:
+        base_index = 0
+        base_commits = []
+        commits = []
+        
+        if pr[0].lower() == product and (
+            (vendor == "*") or (vendor == pr[1]["vendor"].lower())
+        ):
+            cve_patch_directory = patch_directory/(pr[3].strip('.json'))
+            cve_patch_directory.mkdir(exist_ok=True)
+            
+            for x in pr[1]["versions"] :
+                for key in x :
+                    if key == "version":
+                        base_commits.append(x[key])
+                    if key == "lessThan":
+                        commits.append(x[key])
+                
+                
+            for commit in commits:
+                commit_file = cve_patch_directory/f"{commit}.json"
+                if commit_file.exists():
+                    commit_file.unlink()
+                    commit_file.touch() 
+                else :
+                    commit_file.touch()
+                    
+                # repo = Repo(linux_repo)
+                # commit = repo.commit(commit)
+                # # previous_commit = commit.parents[0]
+                # print("//////////"+pr[3]+"///////////////////")
+                # diffs = commit.diff(base_commits[base_index], create_patch=True)
+                # print(diffs)
+                    
+                # base_index += 1

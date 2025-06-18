@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, create_result_file, get_dates, git_pull_repo
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
@@ -74,6 +74,7 @@ if __name__ == "__main__":
     print("Database loaded")
     products_sorted = sorted(products, key=lambda product: product[0])
     print("Product count: " + str(len(products)))
-
+    
     get_dates(products_sorted, product, vendor, version, year)
+    create_commit_patch_db(products_sorted, product, vendor, version, year)
     

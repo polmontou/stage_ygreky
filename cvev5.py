@@ -138,12 +138,16 @@ def create_commit_patch_db(db, product, vendor, version, year):
                 
             for commit in commits:
                 commit_file = cve_patch_directory/f"{commit}.json"
+                patch = load_patch(linux_repo, commit, base_commits[base_index])
                 if commit_file.exists():
                     commit_file.unlink()
-                    commit_file.touch() 
+                    commit_file.touch()
+                    write_patch(commit_file, patch) 
                 else :
                     commit_file.touch()
-                    
+                    write_patch(commit_file, patch)
+                
+                base_index += 1    
                 # repo = Repo(linux_repo)
                 # commit = repo.commit(commit)
                 # # previous_commit = commit.parents[0]
@@ -152,3 +156,15 @@ def create_commit_patch_db(db, product, vendor, version, year):
                 # print(diffs)
                     
                 # base_index += 1
+def load_patch(repository, commit_a, commit_b):
+    repo = Repo(repository)
+    commit = repo.commit(commit_a)
+    diffs = commit.diff(commit_b)
+    return diffs
+    
+    
+
+def write_patch(file, patch):
+    with open(file, "w") as f:
+        json.dump(patch, f)
+    

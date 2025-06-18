@@ -91,7 +91,7 @@ def parse_date(date):
     return parsed_date, parsed_hour
 
 def create_result_file(product, year):
-    path = Path.cwd().parent/"results"
+    path = Path.cwd()/"results"
     date = datetime.today().strftime('%Y-%m-%d')
     results_file_name = path/f"{date}_{product}_since{year}results.csv"
 

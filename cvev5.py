@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
+from dateutil.tz import UTC
 from git import Repo, diff
 import csv
 
@@ -57,11 +58,11 @@ def get_dates(db, product, vendor, version, year):
                 committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
                 
                 #writing author date in CSV file
-                line_datas = ["commit", commit, "AD", author_date, author_hour]
+                line_datas = [pr[3], commit, "AD", author_date, author_hour]
                 write_date(result_file_path, line_datas)
                 
                 #writing committer date in CSV file
-                line_datas = ["commit", commit, "CD", committer_date, committer_hour]
+                line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
                 write_date(result_file_path, line_datas)
                 del author_date, author_hour, committer_date, committer_hour
     print("Results writed")
@@ -69,13 +70,13 @@ def get_dates(db, product, vendor, version, year):
 def get_author_date_from_commit(path, commit):
     repo = Repo(path)
     commit = repo.commit(commit)
-    author_date, author_hour = parse_date(str(commit.authored_datetime))
+    author_date, author_hour = parse_date(str(commit.authored_datetime.astimezone(UTC)))
     return author_date, author_hour
 
 def get_committer_date_from_commit(path, commit):
     repo = Repo(path)
     commit = repo.commit(commit)
-    commit_date, commit_hour = parse_date(str(commit.committed_datetime))
+    commit_date, commit_hour = parse_date(str(commit.committed_datetime.astimezone(UTC)))
     return commit_date, commit_hour
 
 def get_publication_date_from_CVE(pr):
@@ -91,7 +92,7 @@ def parse_date(date):
     return parsed_date, parsed_hour
 
 def create_result_file(product, year):
-    path = Path.cwd()/"results"
+    path = Path.cwd().parent/"results"
     date = datetime.today().strftime('%Y-%m-%d')
     results_file_name = path/f"{date}_{product}_since{year}results.csv"
 
@@ -113,7 +114,7 @@ def write_date(path, dates):
     
 
 def create_commit_patch_db(db, product, vendor, version, year):
-    patch_directory = Path.cwd()/"CVE_patchs"
+    patch_directory = Path.cwd().parent/"CVE_patchs"
     patch_directory.mkdir(exist_ok=True)
     
     
@@ -143,23 +144,12 @@ def create_commit_patch_db(db, product, vendor, version, year):
                     commit_file.touch()
                     write_patch(commit_file, patch)
                 
- 
-                # repo = Repo(linux_repo)
-                # commit = repo.commit(commit)
-                # # previous_commit = commit.parents[0]
-                # print("//////////"+pr[3]+"///////////////////")
-                # diffs = commit.diff(base_commits[base_index], create_patch=True)
-                # print(diffs)
-                    
-                # base_index += 1
 def load_patch(repository, commit_a):
     patch = ""
     repo = Repo(repository)
     commit = repo.commit(commit_a)
     patch = repo.git.diff(commit.parents[0], commit_a)
     return patch
-    
-    
 
 def write_patch(file, patch):
     with open(file, "w") as f:

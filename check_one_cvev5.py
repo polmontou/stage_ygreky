@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db, get_commit_tag
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
@@ -77,4 +77,4 @@ if __name__ == "__main__":
     
     get_dates(products_sorted, product, vendor, version, year)
     create_commit_patch_db(products_sorted, product, vendor, version, year)
-    
+    get_commit_tag(linux_repo, "e6015ca453b82ec54aec9682dcc38773948fcc48")

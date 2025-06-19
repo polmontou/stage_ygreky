@@ -2,14 +2,14 @@
 # SPDX-FileCopyrightText: Copyright 2024 Marta Rybczynska
 # $ git init 
 import json
-import os
 import re
 from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import UTC
-from git import Repo, diff
+from git import Repo
 import csv
+
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
@@ -36,36 +36,51 @@ def get_dates(db, product, vendor, version, year):
     for pr in db:
         line_datas = []
         commits = []
-        
+        semvers = []
+       
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
-        ):
+        ):  
+            print(pr[3])
             for x in pr[1]["versions"] :
                 for key in x :
                     if key == "lessThan":
                         commits.append(x[key])
-            
+                        
+            for x in pr[1]["versions"]:
+                if x["versionType"] != "semver":
+                    print(x["versionType"])
+                    continue
+                if (x["version"] != None and x["version"] != "0" and (x["lessThan"] != None or x["lessThanOrEqual" != None])):
+                    print(x["versionType"])
+                    semvers.append(x["version"])                    
+
+            print(semvers)
             #looking for CVE publication date
-            cve_date, cve_hour = get_publication_date_from_CVE(pr)
-                #writing them in the CSV file
-            line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-            write_date(result_file_path, line_datas)
+    #         cve_date, cve_hour = get_publication_date_from_CVE(pr)
+    #             #writing them in the CSV file
+    #         line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
+    #         write_date(result_file_path, line_datas)
             
             
-            for commit in commits:
-                #looking for each "lessThan" commit dates (author + committer)
-                author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
-                committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
+    #         for commit in commits:
+    #             #looking for each "lessThan" commit dates (author + committer)
+    #             author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
+    #             committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
+    #             # release_date, release_hour = get_release_date_from_commit(linux_repo, commit, semvers)
                 
-                #writing author date in CSV file
-                line_datas = [pr[3], commit, "AD", author_date, author_hour]
-                write_date(result_file_path, line_datas)
+    #             #writing author date in CSV file
+    #             line_datas = [pr[3], commit, "AD", author_date, author_hour]
+    #             write_date(result_file_path, line_datas)
                 
-                #writing committer date in CSV file
-                line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-                write_date(result_file_path, line_datas)
-                del author_date, author_hour, committer_date, committer_hour
-    print("Results writed")
+    #             #writing committer date in CSV file
+    #             line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+    #             write_date(result_file_path, line_datas)
+                
+    #             #writing release date in CSV file
+    #             lines_datas = [pr[3], commit, "RD"]
+    #             del author_date, author_hour, committer_date, committer_hour
+    # print("Results writed")
     
 def get_author_date_from_commit(path, commit):
     repo = Repo(path)
@@ -92,7 +107,7 @@ def parse_date(date):
     return parsed_date, parsed_hour
 
 def create_result_file(product, year):
-    path = Path.cwd().parent/"results"
+    path = Path.cwd()/"results"
     date = datetime.today().strftime('%Y-%m-%d')
     results_file_name = path/f"{date}_{product}_since{year}results.csv"
 
@@ -114,7 +129,7 @@ def write_date(path, dates):
     
 
 def create_commit_patch_db(db, product, vendor, version, year):
-    patch_directory = Path.cwd().parent/"CVE_patchs"
+    patch_directory = Path.cwd()/"CVE_patchs"
     patch_directory.mkdir(exist_ok=True)
     
     
@@ -144,14 +159,29 @@ def create_commit_patch_db(db, product, vendor, version, year):
                     commit_file.touch()
                     write_patch(commit_file, patch)
                 
-def load_patch(repository, commit_a):
-    patch = ""
+def load_patch(repository, commit_num):
     repo = Repo(repository)
-    commit = repo.commit(commit_a)
-    patch = repo.git.diff(commit.parents[0], commit_a)
+    commit = repo.commit(commit_num)
+    patch = repo.git.diff(commit.parents[0], commit_num)
     return patch
 
 def write_patch(file, patch):
     with open(file, "w") as f:
         json.dump(patch, f)
+
+def get_commit_tag(repository, commit_num):
+    repo=Repo(repository)
+    commit_tag = repo.git.describe('--tags', commit_num)
+    clean_commit_tag(commit_tag)
+
+def clean_commit_tag(commit_tag):
+    clean_commit_tag = re.sub("[a-zA-Z]", "", commit_tag)
+    clean_commit_tag = re.sub("-.*","", clean_commit_tag)
+    return clean_commit_tag
+
+# def get_release_date_from_commit(repo, commit, semvers):
+#     commit_tag = get_commit_tag(repo, commit)
     
+# def compare_semver_with_tag(semvers, commit_tag):
+#     for semver in semvers:
+#         if semver   

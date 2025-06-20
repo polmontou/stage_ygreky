@@ -61,11 +61,11 @@ if __name__ == "__main__":
                             if "cna" in data["containers"]:
                                 if "affected" in data["containers"]["cna"]:
                                     # print (data['containers']['cna']['affected'][0])
-                                    for x in data["containers"]["cna"]["affected"]:
-                                        products.append(
-                                            (x["product"].lower(), x, data, filename)
-                                        )
-                                        break
+                                    x = data["containers"]["cna"]["affected"]
+                                    products.append(
+                                        (x[0]["product"].lower(), x, data, filename)
+                                    )
+                                        
 
                     except KeyError:
                         pass

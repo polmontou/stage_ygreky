@@ -3,12 +3,13 @@
 # $ git init 
 import json
 import re
+import csv
 from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import UTC
 from git import Repo
-import csv
+from cmp_version import cmp_version
 
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
@@ -33,7 +34,7 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
 def get_dates(db, product, vendor, version, year):
     result_file_path = create_result_file(product, year)
     print("Writing results...")
-    for pr in db:
+    for pr in db:       
         line_datas = []
         commits = []
         semvers = []
@@ -41,21 +42,20 @@ def get_dates(db, product, vendor, version, year):
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
         ):  
-            print(pr[3])
-            for x in pr[1]["versions"] :
-                for key in x :
-                    if key == "lessThan":
-                        commits.append(x[key])
-                        
-            for x in pr[1]["versions"]:
-                if x["versionType"] != "semver":
-                    print(x["versionType"])
-                    continue
-                if (x["version"] != None and x["version"] != "0" and (x["lessThan"] != None or x["lessThanOrEqual" != None])):
-                    print(x["versionType"])
-                    semvers.append(x["version"])                    
+            print("//////////////  " + pr[3])
 
-            print(semvers)
+            for x in pr[1] : 
+                for y in x["versions"] :
+                    if y.get("versionType") != None :
+                        if y["versionType"] == "git":
+                            if y.get("lessThan") != None : 
+                                commits.append(y["lessThan"])
+                        elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
+                            if y["version"] != "0":
+                                semvers.append(y["version"])   
+            
+            print(f"commits : {commits}")
+            print(f"semvers : {semvers}")              
             #looking for CVE publication date
     #         cve_date, cve_hour = get_publication_date_from_CVE(pr)
     #             #writing them in the CSV file
@@ -142,10 +142,12 @@ def create_commit_patch_db(db, product, vendor, version, year):
             cve_patch_directory = patch_directory/(pr[3].strip('.json'))
             cve_patch_directory.mkdir(exist_ok=True)
             
-            for x in pr[1]["versions"] :
-                for key in x :
-                    if key == "lessThan":
-                        commits.append(x[key])
+            for x in pr[1] : 
+                for y in x["versions"] :
+                    if y.get("versionType") != None :
+                        if y["versionType"] == "git":
+                            if y.get("lessThan") != None : 
+                                commits.append(y["lessThan"])
                 
                 
             for commit in commits:
@@ -184,4 +186,4 @@ def clean_commit_tag(commit_tag):
     
 # def compare_semver_with_tag(semvers, commit_tag):
 #     for semver in semvers:
-#         if semver   
+#         if 

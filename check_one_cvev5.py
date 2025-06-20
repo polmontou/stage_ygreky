@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db, get_commit_tag
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
@@ -61,11 +61,11 @@ if __name__ == "__main__":
                             if "cna" in data["containers"]:
                                 if "affected" in data["containers"]["cna"]:
                                     # print (data['containers']['cna']['affected'][0])
-                                    for x in data["containers"]["cna"]["affected"]:
-                                        products.append(
-                                            (x["product"].lower(), x, data, filename)
-                                        )
-                                        break
+                                    x = data["containers"]["cna"]["affected"]
+                                    products.append(
+                                        (x[0]["product"].lower(), x, data, filename)
+                                    )
+                                        
 
                     except KeyError:
                         pass
@@ -76,5 +76,4 @@ if __name__ == "__main__":
     print("Product count: " + str(len(products)))
     
     get_dates(products_sorted, product, vendor, version, year)
-    create_commit_patch_db(products_sorted, product, vendor, version, year)
-    
+    # create_commit_patch_db(products_sorted, product, vendor, version, year)

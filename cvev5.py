@@ -168,7 +168,7 @@ def create_commit_patch_db(db, product, vendor, version, year):
     patch_directory = Path.cwd()/"CVE_patchs"
     patch_directory.mkdir(exist_ok=True)
     
-    
+    print("Creating database...")
     for pr in db:
         commits = []
         
@@ -187,23 +187,35 @@ def create_commit_patch_db(db, product, vendor, version, year):
                 
                 
             for commit in commits:
-                commit_file = cve_patch_directory/f"{commit}.json"
-                patch = load_patch(linux_repo, commit)
-                if commit_file.exists():
-                    commit_file.unlink()
-                    commit_file.touch()
-                    write_patch(commit_file, patch) 
-                else :
-                    commit_file.touch()
-                    write_patch(commit_file, patch)
                 
+                commit_file_json = cve_patch_directory/f"{commit}.json"
+                commit_file_txt = cve_patch_directory/f"{commit}.txt"
+                patch = load_patch(linux_repo, commit)
+                if commit_file_json.exists() or commit_file_txt.exists():
+                    commit_file_json.unlink()
+                    commit_file_json.touch()
+                    write_patch_json(commit_file_json, patch)
+                    commit_file_txt.unlink()
+                    commit_file_txt.touch()
+                    write_patch_txt(commit_file_txt, patch) 
+                else :
+                    commit_file_json.touch()
+                    write_patch_json(commit_file_json, patch)
+                    commit_file_txt.touch()
+                    write_patch_txt(commit_file_txt, patch)
+    print("Database created")
+
+               
 def load_patch(repository, commit_num):
     repo = Repo(repository)
     commit = repo.commit(commit_num)
     patch = repo.git.diff(commit.parents[0], commit_num)
     return patch
 
-def write_patch(file, patch):
+def write_patch_json(file, patch):
     with open(file, "w") as f:
         json.dump(patch, f)
 
+def write_patch_txt(file, patch):
+    with open(file, "w") as f:
+        f.writelines(patch)

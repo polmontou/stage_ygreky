@@ -175,8 +175,10 @@ def create_commit_patch_db(db, product, vendor, version, year):
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
         ):
-            cve_patch_directory = patch_directory/(pr[3].strip('.json'))
-            cve_patch_directory.mkdir(exist_ok=True)
+            cve_patch_directory_json = Path(patch_directory/(pr[3].strip('.json'))/"JSON")
+            cve_patch_directory_txt = Path(patch_directory/(pr[3].strip('.json'))/"TXT")
+            cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
+            cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
             
             for x in pr[1] : 
                 for y in x["versions"] :
@@ -188,8 +190,8 @@ def create_commit_patch_db(db, product, vendor, version, year):
                 
             for commit in commits:
                 
-                commit_file_json = cve_patch_directory/f"{commit}.json"
-                commit_file_txt = cve_patch_directory/f"{commit}.txt"
+                commit_file_json = cve_patch_directory_json/f"{commit}.json"
+                commit_file_txt = cve_patch_directory_txt/f"{commit}.txt"
                 patch = load_patch(linux_repo, commit)
                 if commit_file_json.exists() or commit_file_txt.exists():
                     commit_file_json.unlink()

@@ -42,19 +42,20 @@ def get_dates(db, product, vendor, version, year):
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
         ):  
-
+            print("----------" + pr[3])
             for x in pr[1] : 
-                for y in x["versions"] :
-                    if "versionType" in y:
-                        if y["versionType"] == "git":
-                            if "lessThan" in y: 
-                                commits.append(y["lessThan"])
-                        elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
-                            if y["status"] == "unaffected":
-                                if y["version"] != "0":
-                                    semvers.append(y["version"])   
-                            elif y["status"] == "affected":
-                                semvers.append(y["lessThan"])
+                if "versions" in x: 
+                    for y in x["versions"] :
+                        if "versionType" in y:
+                            if y["versionType"] == "git":
+                                if "lessThan" in y: 
+                                    commits.append(y["lessThan"])
+                            elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
+                                if y["status"] == "unaffected":
+                                    if y["version"] != "0":
+                                        semvers.append(y["version"])   
+                                elif y["status"] == "affected":
+                                    semvers.append(y["lessThan"])
             
             # looking for CVE publication date
             cve_date, cve_hour = get_publication_date_from_CVE(pr)
@@ -172,7 +173,7 @@ def write_date(path, dates):
         date_writer.writerow(dates)
     
 
-def create_commit_patch_db(db, product, vendor, version, year):
+def create_commit_patch_db(db, product, vendor):
     patch_directory = Path.cwd()/"CVE_patchs"
     patch_directory.mkdir(exist_ok=True)
     
@@ -189,11 +190,12 @@ def create_commit_patch_db(db, product, vendor, version, year):
             cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
             
             for x in pr[1] : 
-                for y in x["versions"] :
-                    if "versionType" in y:
-                        if y["versionType"] == "git":
-                            if "lessThan" in y: 
-                                commits.append(y["lessThan"])
+                if "versions" in x: 
+                    for y in x["versions"] :
+                        if "versionType" in y:
+                            if y["versionType"] == "git":
+                                if "lessThan" in y: 
+                                    commits.append(y["lessThan"])
                 
                 
             for commit in commits:

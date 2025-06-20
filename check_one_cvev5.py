@@ -81,5 +81,5 @@ if __name__ == "__main__":
     products_sorted = sorted(products, key=lambda product: product[0])
     print("Product count: " + str(len(products)))
     
-    get_dates(products_sorted, product, vendor, version, minimal_year_wanted)
-    create_commit_patch_db(products_sorted, product, vendor, version, year)
+    get_dates(products, product, vendor, version, minimal_year_wanted)
+    create_commit_patch_db(products, product, vendor)

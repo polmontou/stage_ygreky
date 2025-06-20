@@ -50,9 +50,12 @@ def get_dates(db, product, vendor, version, year):
                             if "lessThan" in y: 
                                 commits.append(y["lessThan"])
                         elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
-                            if y["version"] != "0":
-                                semvers.append(y["version"])   
-          
+                            if y["status"] == "unaffected":
+                                if y["version"] != "0":
+                                    semvers.append(y["version"])   
+                            elif y["status"] == "affected":
+                                semvers.append(y["lessThan"])
+            
             # looking for CVE publication date
             cve_date, cve_hour = get_publication_date_from_CVE(pr)
                 #writing them in the CSV file
@@ -84,8 +87,11 @@ def get_dates(db, product, vendor, version, year):
 def get_release_date_from_commit(repository, commit, semvers):
     commit_tag = get_commit_tag(repository, commit)
     semver = find_recentest_semver(semvers, commit_tag)
-    commit_hash = get_commit_hash_from_semver(repository, semver)
-    release_date, release_hour = get_committer_date_from_commit(repository, commit_hash)
+    if semver:
+        commit_hash = get_commit_hash_from_semver(repository, semver)
+        release_date, release_hour = get_committer_date_from_commit(repository, commit_hash)
+    else:
+        release_date, release_hour = "Unknown", "Unknown"
     return release_date, release_hour
     
 def get_commit_tag(repository, commit_num):
@@ -104,13 +110,15 @@ def find_recentest_semver(semvers, commit_tag):
     for semver in semvers:
         if cmp_version(semver, commit_tag) == 1 or cmp_version(semver, commit_tag) == 0:
             recent_semvers.append(semver)
-            
-    closest_semver = recent_semvers[0]
-    for semver in recent_semvers:
-        if cmp_version(semver, closest_semver) == -1:
-            closest_semver = semver
-            
-    return closest_semver
+    if recent_semvers:        
+        closest_semver = recent_semvers[0]
+        for semver in recent_semvers:
+            if cmp_version(semver, closest_semver) == -1:
+                closest_semver = semver
+                
+        return closest_semver
+    else:
+        return
 
 def get_commit_hash_from_semver(repository, semver):
     repo = Repo(repository)

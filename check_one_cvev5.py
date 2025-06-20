@@ -19,27 +19,33 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--vendor", help="Vendor name", default=None)
     parser.add_argument("-y", "--minimal-year-wanted", help="Since when", default=None)
     parser.add_argument("-r", "--version", help="Product version", default=None)
+    # parser.add_argument("-n", "--cve-id", help="A specific CVE's ID", default=None)
     # parser.add_argument("-r", "--version", help="Product version", required=True)
     args = parser.parse_args()
 
     input_dir = args.input_dir
+    
     product = args.product.lower()
+    
     if args.vendor is not None:
         vendor = args.vendor.lower()
     else:
         vendor = "*"
 
+    if args.minimal_year_wanted is not None:
+        minimal_year_wanted = args.minimal_year_wanted
+    else:
+        minimal_year_wanted = str(0)
+        
     #test pour skip version // version = args.version
     if args.version is not None:
         version = args.version
     else:
         version = "*"
     
-
-    if args.minimal_year_wanted is not None:
-        minimal_year_wanted = args.minimal_year_wanted
-    else:
-        minimal_year_wanted = str(0)
+    # if args.cve_id != None:
+    #     cve_id = args.cve_id 
+    
         
     products = []
     
@@ -75,5 +81,5 @@ if __name__ == "__main__":
     products_sorted = sorted(products, key=lambda product: product[0])
     print("Product count: " + str(len(products)))
     
-    get_dates(products_sorted, product, vendor, version, year)
+    get_dates(products_sorted, product, vendor, version, minimal_year_wanted)
     create_commit_patch_db(products_sorted, product, vendor, version, year)

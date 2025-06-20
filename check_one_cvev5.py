@@ -76,5 +76,4 @@ if __name__ == "__main__":
     print("Product count: " + str(len(products)))
     
     get_dates(products_sorted, product, vendor, version, year)
-    create_commit_patch_db(products_sorted, product, vendor, version, year)
-    get_commit_tag(linux_repo, "e6015ca453b82ec54aec9682dcc38773948fcc48")
+    # create_commit_patch_db(products_sorted, product, vendor, version, year)

@@ -42,54 +42,90 @@ def get_dates(db, product, vendor, version, year):
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
         ):  
-            print("//////////////  " + pr[3])
 
             for x in pr[1] : 
                 for y in x["versions"] :
-                    if y.get("versionType") != None :
+                    if "versionType" in y:
                         if y["versionType"] == "git":
-                            if y.get("lessThan") != None : 
+                            if "lessThan" in y: 
                                 commits.append(y["lessThan"])
                         elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
                             if y["version"] != "0":
                                 semvers.append(y["version"])   
+          
+            # looking for CVE publication date
+            cve_date, cve_hour = get_publication_date_from_CVE(pr)
+                #writing them in the CSV file
+            line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
+            write_date(result_file_path, line_datas)
             
-            print(f"commits : {commits}")
-            print(f"semvers : {semvers}")              
-            #looking for CVE publication date
-    #         cve_date, cve_hour = get_publication_date_from_CVE(pr)
-    #             #writing them in the CSV file
-    #         line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-    #         write_date(result_file_path, line_datas)
-            
-            
-    #         for commit in commits:
-    #             #looking for each "lessThan" commit dates (author + committer)
-    #             author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
-    #             committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
-    #             # release_date, release_hour = get_release_date_from_commit(linux_repo, commit, semvers)
+            for commit in commits:
                 
-    #             #writing author date in CSV file
-    #             line_datas = [pr[3], commit, "AD", author_date, author_hour]
-    #             write_date(result_file_path, line_datas)
+                #looking for each "lessThan" commit dates (author + committer)
+                author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
+                committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
+                release_date, release_hour = get_release_date_from_commit(linux_repo, commit, semvers)
                 
-    #             #writing committer date in CSV file
-    #             line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-    #             write_date(result_file_path, line_datas)
+                #writing author date in CSV file
+                line_datas = [pr[3], commit, "AD", author_date, author_hour]
+                write_date(result_file_path, line_datas)
                 
-    #             #writing release date in CSV file
-    #             lines_datas = [pr[3], commit, "RD"]
-    #             del author_date, author_hour, committer_date, committer_hour
-    # print("Results writed")
+                #writing committer date in CSV file
+                line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+                write_date(result_file_path, line_datas)
+                
+                #writing release date in CSV file
+                line_datas = [pr[3], commit, "RD", release_date, release_hour]
+                write_date(result_file_path, line_datas)
+                
+                del author_date, author_hour, committer_date, committer_hour
+    print("Results writed")
     
-def get_author_date_from_commit(path, commit):
-    repo = Repo(path)
+def get_release_date_from_commit(repository, commit, semvers):
+    commit_tag = get_commit_tag(repository, commit)
+    semver = find_recentest_semver(semvers, commit_tag)
+    commit_hash = get_commit_hash_from_semver(repository, semver)
+    release_date, release_hour = get_committer_date_from_commit(repository, commit_hash)
+    return release_date, release_hour
+    
+def get_commit_tag(repository, commit_num):
+    repo=Repo(repository)
+    commit_tag = repo.git.describe('--tags', commit_num)
+    return clean_commit_tag(commit_tag)
+    
+def clean_commit_tag(commit_tag):
+    clean_commit_tag = re.sub("[a-zA-Z]", "", commit_tag)
+    clean_commit_tag = re.sub("-.*","", clean_commit_tag)
+    return clean_commit_tag
+   
+    
+def find_recentest_semver(semvers, commit_tag):
+    recent_semvers = []
+    for semver in semvers:
+        if cmp_version(semver, commit_tag) == 1 or cmp_version(semver, commit_tag) == 0:
+            recent_semvers.append(semver)
+            
+    closest_semver = recent_semvers[0]
+    for semver in recent_semvers:
+        if cmp_version(semver, closest_semver) == -1:
+            closest_semver = semver
+            
+    return closest_semver
+
+def get_commit_hash_from_semver(repository, semver):
+    repo = Repo(repository)
+    commit_hash = repo.git.rev_parse(f"v{semver}")
+    return commit_hash
+    
+    
+def get_author_date_from_commit(repository, commit):
+    repo = Repo(repository)
     commit = repo.commit(commit)
     author_date, author_hour = parse_date(str(commit.authored_datetime.astimezone(UTC)))
     return author_date, author_hour
 
-def get_committer_date_from_commit(path, commit):
-    repo = Repo(path)
+def get_committer_date_from_commit(repository, commit):
+    repo = Repo(repository)
     commit = repo.commit(commit)
     commit_date, commit_hour = parse_date(str(commit.committed_datetime.astimezone(UTC)))
     return commit_date, commit_hour
@@ -144,9 +180,9 @@ def create_commit_patch_db(db, product, vendor, version, year):
             
             for x in pr[1] : 
                 for y in x["versions"] :
-                    if y.get("versionType") != None :
+                    if "versionType" in y:
                         if y["versionType"] == "git":
-                            if y.get("lessThan") != None : 
+                            if "lessThan" in y: 
                                 commits.append(y["lessThan"])
                 
                 
@@ -171,19 +207,3 @@ def write_patch(file, patch):
     with open(file, "w") as f:
         json.dump(patch, f)
 
-def get_commit_tag(repository, commit_num):
-    repo=Repo(repository)
-    commit_tag = repo.git.describe('--tags', commit_num)
-    clean_commit_tag(commit_tag)
-
-def clean_commit_tag(commit_tag):
-    clean_commit_tag = re.sub("[a-zA-Z]", "", commit_tag)
-    clean_commit_tag = re.sub("-.*","", clean_commit_tag)
-    return clean_commit_tag
-
-# def get_release_date_from_commit(repo, commit, semvers):
-#     commit_tag = get_commit_tag(repo, commit)
-    
-# def compare_semver_with_tag(semvers, commit_tag):
-#     for semver in semvers:
-#         if 

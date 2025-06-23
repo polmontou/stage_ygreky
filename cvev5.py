@@ -237,8 +237,8 @@ def write_patch_txt(file, patch):
 
 # STATS MADE BEYOND THIS POINT
 
-def check_cves_validity(db, products_object):
-    for pr in db:
-        if "vendor" in pr and "product" in pr:
-            if pr["vendor"] != "n/a" and pr["product"] != "n/a" : 
-                if 
+# def check_cves_validity(db, products_object):
+#     for pr in db:
+#         if "vendor" in pr and "product" in pr:
+#             if pr["vendor"] != "n/a" and pr["product"] != "n/a" : 
+#                 if 

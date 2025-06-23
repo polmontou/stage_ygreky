@@ -64,7 +64,7 @@ def get_dates(db, product, vendor, version, year):
             cve_date, cve_hour = get_publication_date_from_CVE(pr)
                 #writing them in the CSV file
             line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-            write_date(result_file_path, line_datas)
+            write_datas(result_file_path, line_datas)
             
             for commit in commits:
                 
@@ -75,15 +75,15 @@ def get_dates(db, product, vendor, version, year):
                 
                 #writing author date in CSV file
                 line_datas = [pr[3], commit, "AD", author_date, author_hour]
-                write_date(result_file_path, line_datas)
+                write_datas(result_file_path, line_datas)
                 
                 #writing committer date in CSV file
                 line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-                write_date(result_file_path, line_datas)
+                write_datas(result_file_path, line_datas)
                 
                 #writing release date in CSV file
                 line_datas = [pr[3], commit, "RD", release_date, release_hour]
-                write_date(result_file_path, line_datas)
+                write_datas(result_file_path, line_datas)
                 
                 del author_date, author_hour, committer_date, committer_hour
     print("Results writed")
@@ -170,10 +170,10 @@ def create_result_file(product, year):
         print(f"\"{results_file_name.name}\" file created")
         return results_file_name
 
-def write_date(path, dates):
+def write_datas(path, datas):
     with open(path, 'a', newline='') as csvfile:
         date_writer = csv.writer(csvfile, delimiter = ',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        date_writer.writerow(dates)
+        date_writer.writerow(datas)
     
 
 def create_commit_patch_db(db, product, vendor):
@@ -237,8 +237,38 @@ def write_patch_txt(file, patch):
 
 # STATS MADE BEYOND THIS POINT
 
-# def check_cves_validity(db, products_object):
-#     for pr in db:
-#         if "vendor" in pr and "product" in pr:
-#             if pr["vendor"] != "n/a" and pr["product"] != "n/a" : 
-#                 if 
+def check_cves_validity(db, products_object):
+    for pr in db:
+        if pr[0] != "n/a":
+            if pr[0] not in products_object:
+                products_object[pr[0]] = product(pr[0], pr[1])
+            else :
+                products_object[pr[0]].check_vendors(pr[1])
+                products_object[pr[0]].entries_count += 1
+        else :
+            product.invalid_entries += 1        
+        
+def write_stats(products_object):
+    stats_file_name = create_stats_file()
+    lines_datas = ["product name", "entries count", "fiability rate"]
+    write_datas(stats_file_name, lines_datas)
+    for prod in products_object:
+        lines_datas = [products_object[prod].name, products_object[prod].get_entries(), products_object[prod].get_fiability_rate()]   
+        write_datas(stats_file_name, lines_datas)
+        
+def create_stats_file():
+    path = Path.cwd()/"stats"
+    date = datetime.today().strftime('%Y-%m-%d')
+    stats_file_name = path/f"{date}_CVE_fiability.csv"
+    
+    path.mkdir(exist_ok=True)
+    if stats_file_name.exists():
+        stats_file_name.unlink()
+        stats_file_name.touch()
+        print(f"\"{stats_file_name.name}\" already exists : file replaced")
+        return stats_file_name
+    else :
+        stats_file_name.touch()
+        print(f"\"{stats_file_name.name}\" file created")
+        return stats_file_name
+        

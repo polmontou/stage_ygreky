@@ -172,7 +172,7 @@ def create_result_file(product, year):
 
 def write_datas(path, datas):
     with open(path, 'a', newline='') as csvfile:
-        date_writer = csv.writer(csvfile, delimiter = ',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        date_writer = csv.writer(csvfile, delimiter = ',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         date_writer.writerow(datas)
     
 

@@ -10,15 +10,18 @@ from dateutil.parser import parse
 from dateutil.tz import UTC
 from git import Repo
 from cmp_version import cmp_version
+from product import product
 
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
 
+
 def git_pull_repo(path):
     repo = Repo(path)
     repo.remotes.origin.pull()
 
+#sorts entries with the date given as argument
 def parse_cve_id_with_year(cve, minimal_year_wanted):
     pattern = pattern = r"CVE-(\d{4})-(\d+)\.json"
     match = re.match(pattern, cve)
@@ -42,7 +45,7 @@ def get_dates(db, product, vendor, version, year):
         if pr[0].lower() == product and (
             (vendor == "*") or (vendor == pr[1]["vendor"].lower())
         ):  
-            print("----------" + pr[3])
+            
             for x in pr[1] : 
                 if "versions" in x: 
                     for y in x["versions"] :
@@ -231,3 +234,11 @@ def write_patch_json(file, patch):
 def write_patch_txt(file, patch):
     with open(file, "w") as f:
         f.writelines(patch)
+
+# STATS MADE BEYOND THIS POINT
+
+def check_cves_validity(db, products_object):
+    for pr in db:
+        if "vendor" in pr and "product" in pr:
+            if pr["vendor"] != "n/a" and pr["product"] != "n/a" : 
+                if 

@@ -5,10 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db, get_commit_tag
-
-cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
-linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db, cves_repo, linux_repo
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -19,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--vendor", help="Vendor name", default=None)
     parser.add_argument("-y", "--minimal-year-wanted", help="Since when", default=None)
     parser.add_argument("-r", "--version", help="Product version", default=None)
-    # parser.add_argument("-n", "--cve-id", help="A specific CVE's ID", default=None)
+
     # parser.add_argument("-r", "--version", help="Product version", required=True)
     args = parser.parse_args()
 
@@ -37,22 +34,19 @@ if __name__ == "__main__":
     else:
         minimal_year_wanted = str(0)
         
-    #test pour skip version // version = args.version
     if args.version is not None:
         version = args.version
     else:
         version = "*"
     
-    # if args.cve_id != None:
-    #     cve_id = args.cve_id 
     
         
     products = []
     
-    # print("Updating datas from distant repositories...")
-    # git_pull_repo(cves_repo)
-    # git_pull_repo(linux_repo)
-    # print("Update done")
+    print("Updating datas from distant repositories...")
+    git_pull_repo(cves_repo)
+    git_pull_repo(linux_repo)
+    print("Update done")
     
     print("Loading database...")
     for root, dirnames, filenames in os.walk(input_dir):

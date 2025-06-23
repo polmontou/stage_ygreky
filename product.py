@@ -10,6 +10,8 @@ class product:
     def check_vendors(self, vendor):
         if vendor != "n/a":
             self.valid_entries_count += 1
+        else:
+            product.invalid_entries +=1
     
     def get_entries(self):
         return self.entries_count

@@ -15,7 +15,7 @@ from product import product
 
 cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
 linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
-
+zulip_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/zulip"
 
 def git_pull_repo(path):
     repo = Repo(path)
@@ -91,8 +91,9 @@ def get_dates(db, product, vendor, version, year):
 def get_release_date_from_commit(repository, commit, semvers):
     commit_tag = get_commit_tag(repository, commit)
     semver = find_recentest_semver(semvers, commit_tag)
+    v_semver = f"v{semver}"
     if semver:
-        commit_hash = get_commit_hash_from_semver(repository, semver)
+        commit_hash = get_commit_hash_from_semver(repository, v_semver)
         release_date, release_hour = get_committer_date_from_commit(repository, commit_hash)
     else:
         release_date, release_hour = "Unknown", "Unknown"
@@ -126,7 +127,7 @@ def find_recentest_semver(semvers, commit_tag):
 
 def get_commit_hash_from_semver(repository, semver):
     repo = Repo(repository)
-    commit_hash = repo.git.rev_parse(f"v{semver}")
+    commit_hash = repo.git.rev_parse(semver)
     return commit_hash
     
     
@@ -184,43 +185,112 @@ def create_commit_patch_db(db, product, vendor):
     for pr in db:
         commits = []
         
-        if pr[0].lower() == product and (
-            (vendor == "*") or (vendor == pr[1]["vendor"].lower())
-        ):
+        if pr[0].lower() == product:
+            
             cve_patch_directory_json = Path(patch_directory/(pr[3].strip('.json'))/"JSON")
             cve_patch_directory_txt = Path(patch_directory/(pr[3].strip('.json'))/"TXT")
             cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
             cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
             
-            for x in pr[1] : 
-                if "versions" in x: 
-                    for y in x["versions"] :
-                        if "versionType" in y:
-                            if y["versionType"] == "git":
-                                if "lessThan" in y: 
-                                    commits.append(y["lessThan"])
+            if product == "linux":
                 
-                
-            for commit in commits:
-                
-                commit_file_json = cve_patch_directory_json/f"{commit}.json"
-                commit_file_txt = cve_patch_directory_txt/f"{commit}.txt"
-                patch = load_patch(linux_repo, commit)
-                if commit_file_json.exists() or commit_file_txt.exists():
-                    commit_file_json.unlink()
-                    commit_file_json.touch()
-                    write_patch_json(commit_file_json, patch)
-                    commit_file_txt.unlink()
-                    commit_file_txt.touch()
-                    write_patch_txt(commit_file_txt, patch) 
-                else :
-                    commit_file_json.touch()
-                    write_patch_json(commit_file_json, patch)
-                    commit_file_txt.touch()
-                    write_patch_txt(commit_file_txt, patch)
+                for x in pr[1] : 
+                    if "versions" in x: 
+                        for y in x["versions"] :
+                            if "versionType" in y:
+                                if y["versionType"] == "git":
+                                    if "lessThan" in y: 
+                                        commits.append(y["lessThan"])
+                for commit in commits:
+                    
+                    commit_file_json = cve_patch_directory_json/f"{commit}.json"
+                    commit_file_txt = cve_patch_directory_txt/f"{commit}.txt"
+                    patch = load_patch(linux_repo, commit)
+                    if commit_file_json.exists() or commit_file_txt.exists():
+                        commit_file_json.unlink()
+                        commit_file_json.touch()
+                        write_patch_json(commit_file_json, patch)
+                        commit_file_txt.unlink()
+                        commit_file_txt.touch()
+                        write_patch_txt(commit_file_txt, patch) 
+                    else :
+                        commit_file_json.touch()
+                        write_patch_json(commit_file_json, patch)
+                        commit_file_txt.touch()
+                        write_patch_txt(commit_file_txt, patch)
+        
+            elif product == "zulip":
+                for x in pr[1]:
+                    if "versions" in x:
+                        for y in x["versions"]:
+                            commit_parent, commit_child = parse_zulip_version(zulip_repo,y["version"])
+                            
+                            cve_file_json = cve_patch_directory_json/f"{pr[3].strip('.json')}.json"
+                            cve_file_txt = cve_patch_directory_txt/f"{pr[3].strip('.json')}.txt"
+                 
+                            patch = load_patch_zulip(zulip_repo, commit_parent, commit_child)
+                            
+                            if cve_file_json.exists() or cve_file_txt.exists():
+                                cve_file_json.unlink()
+                                cve_file_json.touch()
+                                write_patch_json(cve_file_json, patch)
+                                cve_file_txt.unlink()
+                                cve_file_txt.touch()
+                                write_patch_txt(cve_file_txt, patch) 
+                            else :
+                                cve_file_json.touch()
+                                write_patch_json(cve_file_json, patch)
+                                cve_file_txt.touch()
+                                write_patch_txt(cve_file_txt, patch)
+
     print("Database created")
 
-               
+
+def parse_zulip_version(repository, version):
+    if "," in version:
+        
+        commit_child = re.sub(".*<*\\s", "", version)
+        commit_child = get_commit_hash_from_semver(repository, commit_child)
+        commit_parent = get_parent_commit(repository, commit_child)
+         
+        commit_parent = get_commit_hash_from_semver(repository, commit_parent)
+        commit_child = get_commit_hash_from_semver(repository, commit_child)
+        
+        return commit_parent, commit_child
+    else:
+        if "<" in version:
+            commit_child = re.sub("<*=*\\s", "", version)
+            commit_child = get_commit_hash_from_semver(repository, commit_child)
+            commit_parent = get_parent_commit(repository, commit_child)
+            return commit_parent, commit_child
+        else:
+            commit_parent = re.sub("=\\s", "", version)
+            commit_child = get_child_commit(repository, commit_parent)
+            
+            commit_parent = get_commit_hash_from_semver(repository, commit_parent)
+            commit_child = get_commit_hash_from_semver(repository, commit_child)
+            return commit_parent, commit_child
+
+def get_child_commit(repository, commit_parent):
+    repo = Repo(repository)
+    tags_in_line = repo.git.tag()
+    tags = tags_in_line.split("\n")
+    for tag in tags:
+        if cmp_version(tag, commit_parent) == 1:
+            return tag
+            
+            
+def get_parent_commit(repository, commit_child):
+    repo = Repo(repository)
+    commit_parent = repo.commit(commit_child).parents[0]
+    return commit_parent
+       
+def load_patch_zulip(repository, commit_parent, commit_child):
+    repo = Repo(repository)
+    patch = repo.git.diff(commit_parent, commit_child)
+    return patch
+        
+        
 def load_patch(repository, commit_num):
     repo = Repo(repository)
     commit = repo.commit(commit_num)
@@ -271,4 +341,3 @@ def create_stats_file():
         stats_file_name.touch()
         print(f"\"{stats_file_name.name}\" file created")
         return stats_file_name
-        

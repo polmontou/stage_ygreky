@@ -2,10 +2,8 @@ import json
 import os
 import re
 import argparse
-from cvev5 import git_pull_repo, parse_cve_id_with_year, check_cves_validity, write_stats
+from cvev5 import git_pull_repo, parse_cve_id_with_year, check_cves_validity, write_stats, cves_repo
 
-cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
-linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -49,7 +47,6 @@ if __name__ == "__main__":
     
     print("Updating datas from distant repositories...")
     git_pull_repo(cves_repo)
-    git_pull_repo(linux_repo)
     print("Update done")
     
     print("Loading database...")
@@ -92,3 +89,4 @@ if __name__ == "__main__":
     products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
     
     write_stats(products_object_sorted)
+    

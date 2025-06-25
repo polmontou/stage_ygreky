@@ -13,9 +13,12 @@ from cmp_version import cmp_version
 from product import product
 
 
-cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/cvelistV5"
-linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/linux"
-zulip_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/zulip"
+repos = { 
+    "cves_repo" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/cvelistV5",
+    "linux_repo" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/linux",
+    "zulip_repo" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/zulip",
+    "tensorflow_repo" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/tensorflow"
+}
 
 def git_pull_repo(path):
     repo = Repo(path)
@@ -69,9 +72,9 @@ def get_dates(db, product, vendor, version, year):
             for commit in commits:
                 
                 #looking for each "lessThan" commit dates (author + committer)
-                author_date, author_hour = get_author_date_from_commit(linux_repo, commit)
-                committer_date, committer_hour = get_committer_date_from_commit(linux_repo, commit)
-                release_date, release_hour = get_release_date_from_commit(linux_repo, commit, semvers)
+                author_date, author_hour = get_author_date_from_commit(repos["linux_repo"], commit)
+                committer_date, committer_hour = get_committer_date_from_commit(repos["linux_repo"], commit)
+                release_date, release_hour = get_release_date_from_commit(repos["linux_repo"], commit, semvers)
                 
                 #writing author date in CSV file
                 line_datas = [pr[3], commit, "AD", author_date, author_hour]
@@ -202,8 +205,8 @@ def create_commit_patch_db(db, product, vendor):
                                         commits.append(y["lessThan"])
                 
                 for commit in commits:
-                    files = get_modified_file(linux_repo, commit).split("\n")
-                    parent_commit = get_parent_commit(linux_repo, commit)
+                    files = get_modified_file(repos["linux_repo"], commit).split("\n")
+                    parent_commit = get_parent_commit(repos["linux_repo"], commit)
 
                     for file in files:
                         commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
@@ -215,7 +218,7 @@ def create_commit_patch_db(db, product, vendor):
                         commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
                         commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
                         
-                        diff = load_patch(linux_repo, commit, file)
+                        diff = load_patch(repos["linux_repo"], commit, file)
                         if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
                             commit_file_diff_json.unlink()
                             commit_file_diff_json.touch()
@@ -229,7 +232,7 @@ def create_commit_patch_db(db, product, vendor):
                             commit_file_diff_txt.touch()
                             write_patch_txt(commit_file_diff_txt, diff)
                         
-                        datas = get_file_content(linux_repo, parent_commit, file)
+                        datas = get_file_content(repos["linux_repo"], parent_commit, file)
                         if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
                             commit_file_bug_json.unlink()
                             commit_file_bug_json.touch()
@@ -243,7 +246,7 @@ def create_commit_patch_db(db, product, vendor):
                             commit_file_bug_txt.touch()
                             write_patch_txt(commit_file_bug_txt, datas)
                         
-                        datas = get_file_content(linux_repo, commit, file)
+                        datas = get_file_content(repos["linux_repo"], commit, file)
                         if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
                             commit_file_fixed_json.unlink()
                             commit_file_fixed_json.touch()
@@ -263,12 +266,12 @@ def create_commit_patch_db(db, product, vendor):
                 for x in pr[1]:
                     if "versions" in x:
                         for y in x["versions"]:
-                            commit_parent, commit_child = parse_zulip_version(zulip_repo,y["version"])
+                            commit_parent, commit_child = parse_zulip_version(repos["zulip_repo"],y["version"])
                             
                             cve_file_json = cve_patch_directory_json/f"{pr[3].strip('.json')}.json"
                             cve_file_txt = cve_patch_directory_txt/f"{pr[3].strip('.json')}.txt"
                  
-                            patch = load_patch_zulip(zulip_repo, commit_parent, commit_child)
+                            patch = load_patch_zulip(repos["zulip_repo"], commit_parent, commit_child)
                             
                             if cve_file_json.exists() or cve_file_txt.exists():
                                 cve_file_json.unlink()
@@ -282,8 +285,23 @@ def create_commit_patch_db(db, product, vendor):
                                 write_patch_json(cve_file_json, patch)
                                 cve_file_txt.touch()
                                 write_patch_txt(cve_file_txt, patch)
+            
+            elif product == "tensorflow":
+                
+                tf_repo = Path(repos["tensorflow_repo"])
+                tf_cve_repo = tf_repo.joinpath("tensorflow","security","advisory")
+                for i, file in enumerate(tf_cve_repo.iterdir()):
+                    print(file)
+                    i += 1
+                    if i == 10:
+                        break
+                    
+
+                        
+                                    
 
     print("Database created")
+    
 def get_file_content(repository, commit_hash, file_name):
     repo = Repo(repository)
     file_content = repo.git.show(f"{commit_hash}:{file_name}")

@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db, cves_repo, linux_repo
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db,repos
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -43,8 +43,10 @@ if __name__ == "__main__":
     products = []
     
     print("Updating datas from distant repositories...")
-    git_pull_repo(cves_repo)
-    git_pull_repo(linux_repo)
+    
+    for repo in repos :
+        git_pull_repo(repos[repo])
+        
     print("Update done")
     
     print("Loading database...")

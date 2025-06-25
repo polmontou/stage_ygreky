@@ -42,12 +42,12 @@ if __name__ == "__main__":
         
     products = []
     
-    print("Updating datas from distant repositories...")
+    # print("Updating datas from distant repositories...")
     
-    for repo in repos :
-        git_pull_repo(repos[repo])
+    # for repo in repos :
+    #     git_pull_repo(repos[repo])
         
-    print("Update done")
+    # print("Update done")
     
     print("Loading database...")
     for root, dirnames, filenames in os.walk(input_dir):
@@ -71,6 +71,7 @@ if __name__ == "__main__":
                         pass
                     except TypeError:
                         pass
+    
     print("Database loaded")
     products_sorted = sorted(products, key=lambda product: product[0])
     print("Product count: " + str(len(products)))

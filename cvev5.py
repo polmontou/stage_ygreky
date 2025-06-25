@@ -13,9 +13,9 @@ from cmp_version import cmp_version
 from product import product
 
 
-cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/cvelistV5"
-linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/linux"
-zulip_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/zulip"
+cves_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/cvelistV5"
+linux_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/linux"
+zulip_repo = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/zulip"
 
 def git_pull_repo(path):
     repo = Repo(path)
@@ -193,7 +193,6 @@ def create_commit_patch_db(db, product, vendor):
             cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
             
             if product == "linux":
-                
                 for x in pr[1] : 
                     if "versions" in x: 
                         for y in x["versions"] :
@@ -201,24 +200,65 @@ def create_commit_patch_db(db, product, vendor):
                                 if y["versionType"] == "git":
                                     if "lessThan" in y: 
                                         commits.append(y["lessThan"])
+                
                 for commit in commits:
+                    files = get_modified_file(linux_repo, commit).split("\n")
+                    parent_commit = get_parent_commit(linux_repo, commit)
+
+                    for file in files:
+                        commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
+                        commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                        
+                        commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
+                        commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                        
+                        commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
+                        commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+                        
+                        diff = load_patch(linux_repo, commit, file)
+                        if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
+                            commit_file_diff_json.unlink()
+                            commit_file_diff_json.touch()
+                            write_patch_json(commit_file_diff_json, diff)
+                            commit_file_diff_txt.unlink()
+                            commit_file_diff_txt.touch()
+                            write_patch_txt(commit_file_diff_txt, diff) 
+                        else :
+                            commit_file_diff_json.touch()
+                            write_patch_json(commit_file_diff_json, diff)
+                            commit_file_diff_txt.touch()
+                            write_patch_txt(commit_file_diff_txt, diff)
+                        
+                        datas = get_file_content(linux_repo, parent_commit, file)
+                        if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
+                            commit_file_bug_json.unlink()
+                            commit_file_bug_json.touch()
+                            write_patch_json(commit_file_bug_json, datas)
+                            commit_file_bug_txt.unlink()
+                            commit_file_bug_txt.touch()
+                            write_patch_txt(commit_file_bug_txt, datas) 
+                        else :
+                            commit_file_bug_json.touch()
+                            write_patch_json(commit_file_bug_json, datas)
+                            commit_file_bug_txt.touch()
+                            write_patch_txt(commit_file_bug_txt, datas)
+                        
+                        datas = get_file_content(linux_repo, commit, file)
+                        if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
+                            commit_file_fixed_json.unlink()
+                            commit_file_fixed_json.touch()
+                            write_patch_json(commit_file_fixed_json, datas)
+                            commit_file_fixed_txt.unlink()
+                            commit_file_fixed_txt.touch()
+                            write_patch_txt(commit_file_fixed_txt, datas) 
+                        else :
+                            commit_file_fixed_json.touch()
+                            write_patch_json(commit_file_fixed_json, datas)
+                            commit_file_fixed_txt.touch()
+                            write_patch_txt(commit_file_fixed_txt, datas)
                     
-                    commit_file_json = cve_patch_directory_json/f"{commit}.json"
-                    commit_file_txt = cve_patch_directory_txt/f"{commit}.txt"
-                    patch = load_patch(linux_repo, commit)
-                    if commit_file_json.exists() or commit_file_txt.exists():
-                        commit_file_json.unlink()
-                        commit_file_json.touch()
-                        write_patch_json(commit_file_json, patch)
-                        commit_file_txt.unlink()
-                        commit_file_txt.touch()
-                        write_patch_txt(commit_file_txt, patch) 
-                    else :
-                        commit_file_json.touch()
-                        write_patch_json(commit_file_json, patch)
-                        commit_file_txt.touch()
-                        write_patch_txt(commit_file_txt, patch)
-        
+
+                    
             elif product == "zulip":
                 for x in pr[1]:
                     if "versions" in x:
@@ -244,8 +284,17 @@ def create_commit_patch_db(db, product, vendor):
                                 write_patch_txt(cve_file_txt, patch)
 
     print("Database created")
+def get_file_content(repository, commit_hash, file_name):
+    repo = Repo(repository)
+    file_content = repo.git.show(f"{commit_hash}:{file_name}")
+    return file_content
 
-
+def get_modified_file(repository, commit_hash):
+    repo = Repo(repository)
+    file = repo.git.show('--name-only','--pretty=format:', commit_hash)
+    return file
+    
+    
 def parse_zulip_version(repository, version):
     if "," in version:
         
@@ -291,10 +340,10 @@ def load_patch_zulip(repository, commit_parent, commit_child):
     return patch
         
         
-def load_patch(repository, commit_num):
+def load_patch(repository, commit_num, file):
     repo = Repo(repository)
     commit = repo.commit(commit_num)
-    patch = repo.git.diff(commit.parents[0], commit_num)
+    patch = repo.git.diff(commit.parents[0], commit_num, "--",file)
     return patch
 
 def write_patch_json(file, patch):

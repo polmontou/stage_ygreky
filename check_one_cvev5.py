@@ -17,7 +17,6 @@ if __name__ == "__main__":
     parser.add_argument("-y", "--minimal-year-wanted", help="Since when", default=None)
     parser.add_argument("-r", "--version", help="Product version", default=None)
 
-    # parser.add_argument("-r", "--version", help="Product version", required=True)
     args = parser.parse_args()
 
     input_dir = args.input_dir
@@ -43,10 +42,10 @@ if __name__ == "__main__":
         
     products = []
     
-    # print("Updating datas from distant repositories...")
-    # git_pull_repo(cves_repo)
-    # git_pull_repo(linux_repo)
-    # print("Update done")
+    print("Updating datas from distant repositories...")
+    git_pull_repo(cves_repo)
+    git_pull_repo(linux_repo)
+    print("Update done")
     
     print("Loading database...")
     for root, dirnames, filenames in os.walk(input_dir):
@@ -60,7 +59,6 @@ if __name__ == "__main__":
                         if "containers" in data:
                             if "cna" in data["containers"]:
                                 if "affected" in data["containers"]["cna"]:
-                                    # print (data['containers']['cna']['affected'][0])
                                     x = data["containers"]["cna"]["affected"]
                                     products.append(
                                         (x[0]["product"].lower(), x, data, filename)

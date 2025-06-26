@@ -295,6 +295,7 @@ def create_commit_patch_db(db, product, vendor):
                 tf_cve_repo = tf_repo.joinpath("tensorflow","security","advisory")
                 for i, file in enumerate(tf_cve_repo.iterdir()):
                     cve_id = get_cveid_from_tfrepo(file)
+                    print(cve_id)
                     commit_list = get_commish_hash_from_tfrepo(file)
                     
                     cve_patch_directory_json = Path(patch_directory/cve_id/"JSON")
@@ -303,10 +304,12 @@ def create_commit_patch_db(db, product, vendor):
                     cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
                     
                     for commit in commit_list:
+                        print(commit)
                         files = get_modified_file(repos["tensorflow_repo"], commit).split("\n")
                         parent_commit = get_parent_commit(repos["tensorflow_repo"], commit)
 
                         for file in files:
+                            print(file)
                             commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
                             commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
                             
@@ -331,34 +334,36 @@ def create_commit_patch_db(db, product, vendor):
                                 write_patch_txt(commit_file_diff_txt, diff)
                             
                             datas = get_file_content(repos["tensorflow_repo"], parent_commit, file)
-                            if datas != None:
-                                if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
-                                    commit_file_bug_json.unlink()
-                                    commit_file_bug_json.touch()
-                                    write_patch_json(commit_file_bug_json, datas)
-                                    commit_file_bug_txt.unlink()
-                                    commit_file_bug_txt.touch()
-                                    write_patch_txt(commit_file_bug_txt, datas) 
-                                else :
-                                    commit_file_bug_json.touch()
-                                    write_patch_json(commit_file_bug_json, datas)
-                                    commit_file_bug_txt.touch()
-                                    write_patch_txt(commit_file_bug_txt, datas)
-                            
+                            if datas == None:
+                                datas = f"File created by {commit} commit."
+                            if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
+                                commit_file_bug_json.unlink()
+                                commit_file_bug_json.touch()
+                                write_patch_json(commit_file_bug_json, datas)
+                                commit_file_bug_txt.unlink()
+                                commit_file_bug_txt.touch()
+                                write_patch_txt(commit_file_bug_txt, datas) 
+                            else :
+                                commit_file_bug_json.touch()
+                                write_patch_json(commit_file_bug_json, datas)
+                                commit_file_bug_txt.touch()
+                                write_patch_txt(commit_file_bug_txt, datas)
+                        
                             datas = get_file_content(repos["tensorflow_repo"], commit, file)
-                            if datas != None:
-                                if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
-                                    commit_file_fixed_json.unlink()
-                                    commit_file_fixed_json.touch()
-                                    write_patch_json(commit_file_fixed_json, datas)
-                                    commit_file_fixed_txt.unlink()
-                                    commit_file_fixed_txt.touch()
-                                    write_patch_txt(commit_file_fixed_txt, datas) 
-                                else :
-                                    commit_file_fixed_json.touch()
-                                    write_patch_json(commit_file_fixed_json, datas)
-                                    commit_file_fixed_txt.touch()
-                                    write_patch_txt(commit_file_fixed_txt, datas)
+                            if datas == None:
+                                datas = f"File deleted by {commit} commit."
+                            if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
+                                commit_file_fixed_json.unlink()
+                                commit_file_fixed_json.touch()
+                                write_patch_json(commit_file_fixed_json, datas)
+                                commit_file_fixed_txt.unlink()
+                                commit_file_fixed_txt.touch()
+                                write_patch_txt(commit_file_fixed_txt, datas) 
+                            else :
+                                commit_file_fixed_json.touch()
+                                write_patch_json(commit_file_fixed_json, datas)
+                                commit_file_fixed_txt.touch()
+                                write_patch_txt(commit_file_fixed_txt, datas)
                         i += 1
                     if i == 100:
                         break
@@ -386,9 +391,12 @@ def get_file_content(repository, commit_hash, file_name):
     repo = Repo(repository)
     try:
         file_content = repo.git.show(f"{commit_hash}:{file_name}")
+        if isinstance(file_content, bytes):
+            return file_content
+        else :
+            file_content = f"File {file_name} contains binary, can't be written" 
     except:
         return None
-    return file_content
 
 def get_modified_file(repository, commit_hash):
     repo = Repo(repository)

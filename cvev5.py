@@ -38,57 +38,58 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
         return None, None
 
 def get_dates(db, product, vendor, version, year):
-    result_file_path = create_result_file(product, year)
+    result_file_path = create_result_file(product, year if product != "tensorflow" else "2018")
     print("Writing results...")
     for pr in db:       
         line_datas = []
         commits = []
         semvers = []
        
-        if pr[0].lower() == product and (
-            (vendor == "*") or (vendor == pr[1]["vendor"].lower())
-        ):  
+        if pr[0].lower() == product:  
             
-            for x in pr[1] : 
-                if "versions" in x: 
-                    for y in x["versions"] :
-                        if "versionType" in y:
-                            if y["versionType"] == "git":
-                                if "lessThan" in y: 
-                                    commits.append(y["lessThan"])
-                            elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
-                                if y["status"] == "unaffected":
-                                    if y["version"] != "0":
-                                        semvers.append(y["version"])   
-                                elif y["status"] == "affected":
-                                    semvers.append(y["lessThan"])
-            
-            # looking for CVE publication date
-            cve_date, cve_hour = get_publication_date_from_CVE(pr)
-                #writing them in the CSV file
-            line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-            write_datas(result_file_path, line_datas)
-            
-            for commit in commits:
+            if product == "linux":
+                for x in pr[1] : 
+                    if "versions" in x: 
+                        for y in x["versions"] :
+                            if "versionType" in y:
+                                if y["versionType"] == "git":
+                                    if "lessThan" in y: 
+                                        commits.append(y["lessThan"])
+                                elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
+                                    if y["status"] == "unaffected":
+                                        if y["version"] != "0":
+                                            semvers.append(y["version"])   
+                                    elif y["status"] == "affected":
+                                        semvers.append(y["lessThan"])
                 
-                #looking for each "lessThan" commit dates (author + committer)
-                author_date, author_hour = get_author_date_from_commit(repos["linux_repo"], commit)
-                committer_date, committer_hour = get_committer_date_from_commit(repos["linux_repo"], commit)
-                release_date, release_hour = get_release_date_from_commit(repos["linux_repo"], commit, semvers)
-                
-                #writing author date in CSV file
-                line_datas = [pr[3], commit, "AD", author_date, author_hour]
+                # looking for CVE publication date
+                cve_date, cve_hour = get_publication_date_from_CVE(pr)
+                    #writing them in the CSV file
+                line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
                 write_datas(result_file_path, line_datas)
                 
-                #writing committer date in CSV file
-                line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-                write_datas(result_file_path, line_datas)
-                
-                #writing release date in CSV file
-                line_datas = [pr[3], commit, "RD", release_date, release_hour]
-                write_datas(result_file_path, line_datas)
-                
-                del author_date, author_hour, committer_date, committer_hour
+                for commit in commits:
+                    
+                    #looking for each "lessThan" commit dates (author + committer)
+                    author_date, author_hour = get_author_date_from_commit(repos["linux_repo"], commit)
+                    committer_date, committer_hour = get_committer_date_from_commit(repos["linux_repo"], commit)
+                    release_date, release_hour = get_release_date_from_commit(repos["linux_repo"], commit, semvers)
+                    
+                    #writing author date in CSV file
+                    line_datas = [pr[3], commit, "AD", author_date, author_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    #writing committer date in CSV file
+                    line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    #writing release date in CSV file
+                    line_datas = [pr[3], commit, "RD", release_date, release_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    del author_date, author_hour, committer_date, committer_hour
+                    
+                    
     print("Results writed")
     
 def get_release_date_from_commit(repository, commit, semvers):
@@ -391,12 +392,9 @@ def get_file_content(repository, commit_hash, file_name):
     repo = Repo(repository)
     try:
         file_content = repo.git.show(f"{commit_hash}:{file_name}")
-        if isinstance(file_content, bytes):
-            return file_content
-        else :
-            file_content = f"File {file_name} contains binary, can't be written" 
     except:
         return None
+    return file_content
 
 def get_modified_file(repository, commit_hash):
     repo = Repo(repository)
@@ -456,11 +454,11 @@ def load_patch(repository, commit_num, file):
     return patch
 
 def write_patch_json(file, patch):
-    with open(file, "w") as f:
+    with open(file, "w", errors='ignore') as f:
         json.dump(patch, f)
 
 def write_patch_txt(file, patch):
-    with open(file, "w") as f:
+    with open(file, "w", errors='ignore') as f:
         f.writelines(patch)
 
 # STATS MADE BEYOND THIS POINT

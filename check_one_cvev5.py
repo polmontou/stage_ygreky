@@ -5,7 +5,7 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, create_commit_patch_db,repos
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, get_tensorflow_cve_dates, create_commit_patch_db,repos
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -28,10 +28,12 @@ if __name__ == "__main__":
     else:
         vendor = "*"
 
-    if args.minimal_year_wanted is not None:
+    if args.minimal_year_wanted is not None and product != "tensorflow":
         minimal_year_wanted = args.minimal_year_wanted
+    elif product == "tensorflow":
+        minimal_year_wanted = "2018"
     else:
-        minimal_year_wanted = str(0)
+        minimal_year_wanted = "0"
         
     if args.version is not None:
         version = args.version
@@ -50,31 +52,36 @@ if __name__ == "__main__":
     # print("Update done")
     
     print("Loading database...")
-    for root, dirnames, filenames in os.walk(input_dir):
-        for filename in filenames:
-            year, number = parse_cve_id_with_year(filename, minimal_year_wanted)
-            if filename.endswith((".json")) and year is not None:
-                # add errors='ignore' to skip a decoding error
-                with open(os.path.join(root, filename)) as f:
-                    data = json.load(f)
-                    try:
-                        if "containers" in data:
-                            if "cna" in data["containers"]:
-                                if "affected" in data["containers"]["cna"]:
-                                    x = data["containers"]["cna"]["affected"]
-                                    products.append(
-                                        (x[0]["product"].lower(), x, data, filename)
-                                    )
-                                        
+    if product != "tensorflow": 
+        for root, dirnames, filenames in os.walk(input_dir):
+            for filename in filenames:
+                year, number = parse_cve_id_with_year(filename, minimal_year_wanted)
+                if filename.endswith((".json")) and year is not None:
+                    # add errors='ignore' to skip a decoding error
+                    with open(os.path.join(root, filename)) as f:
+                        data = json.load(f)
+                        try:
+                            if "containers" in data:
+                                if "cna" in data["containers"]:
+                                    if "affected" in data["containers"]["cna"] and product != "tensorflow":
+                                        x = data["containers"]["cna"]["affected"]
+                                        products.append(
+                                            (x[0]["product"].lower(), x, data, filename)
+                                        )
+                                            
 
-                    except KeyError:
-                        pass
-                    except TypeError:
-                        pass
+                        except KeyError:
+                            pass
+                        except TypeError:
+                            pass
     
-    print("Database loaded")
-    products_sorted = sorted(products, key=lambda product: product[0])
-    print("Product count: " + str(len(products)))
     
-    get_dates(products, product, vendor, version, minimal_year_wanted)
+        products_sorted = sorted(products, key=lambda product: product[0])
+        print("Product count: " + str(len(products)))
+    
+    
+        get_dates(products, product, vendor, version, minimal_year_wanted)
+    else :
+        print("Database loaded")
+        get_tensorflow_cve_dates()
     create_commit_patch_db(products, product, vendor)

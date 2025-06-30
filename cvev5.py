@@ -99,7 +99,6 @@ def get_tensorflow_cve_dates():
     
     for file in tf_cve_repo.iterdir():
         cve_id = get_cveid_from_tfrepo(file)
-        print(cve_id)
         commit_list = get_commit_hash_from_tfrepo(file)
         
         cve_year = re.sub("CVE-", "", cve_id)
@@ -123,11 +122,11 @@ def get_tensorflow_cve_dates():
             
             for commit in commit_list:
                 if is_hexadecimal(commit): 
-                    print(commit)
+
                     commit_semver = get_commit_tag(repos["tensorflow"], commit)
                     child_semver = get_child_commit(repos["tensorflow"], commit_semver)
                     child_commit = get_commit_hash_from_semver(repos["tensorflow"], f"v{child_semver}")
-                    print(commit_semver+" => "+child_semver)
+
                     
                     #looking for each "lessThan" commit dates (author + committer)
                     author_date, author_hour = get_author_date_from_commit(repos["tensorflow"], commit)
@@ -168,7 +167,7 @@ def get_release_date_from_commit(repository, commit, semvers):
     
 def get_commit_tag(repository, commit_num):
     repo=Repo(repository)
-    commit_tag = repo.git.describe('--tags', commit_num)
+    commit_tag = repo.git.tag('--points-at', commit_num)
     return clean_commit_tag(commit_tag)
     
 def clean_commit_tag(commit_tag):
@@ -249,163 +248,121 @@ def create_commit_patch_db(db, product, vendor):
     patch_directory.mkdir(exist_ok=True)
     
     print("Creating database...")
-    for pr in db:
-        commits = []
-        
-        if pr[0].lower() == product:
+    if product != "tensorflow":    
+        for pr in db:
+            commits = []
             
-            if product == "linux":
-                cve_patch_directory_json = Path(patch_directory/(pr[3].strip('.json'))/"JSON")
-                cve_patch_directory_txt = Path(patch_directory/(pr[3].strip('.json'))/"TXT")
-                cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
-                cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
-                for x in pr[1] : 
-                    if "versions" in x: 
-                        for y in x["versions"] :
-                            if "versionType" in y:
-                                if y["versionType"] == "git":
-                                    if "lessThan" in y: 
-                                        commits.append(y["lessThan"])
+            if pr[0].lower() == product:
                 
-                for commit in commits:
-                    files = get_modified_file(repos["linux"], commit).split("\n")
-                    parent_commit = get_parent_commit(repos["linux"], commit)
-
-                    for file in files:
-                        commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
-                        commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
-                        
-                        commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
-                        commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
-                        
-                        commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
-                        commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
-                        
-                        diff = load_patch(repos["linux"], commit, file)
-                        if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
-                            commit_file_diff_json.unlink()
-                            commit_file_diff_json.touch()
-                            write_patch_json(commit_file_diff_json, diff)
-                            commit_file_diff_txt.unlink()
-                            commit_file_diff_txt.touch()
-                            write_patch_txt(commit_file_diff_txt, diff) 
-                        else :
-                            commit_file_diff_json.touch()
-                            write_patch_json(commit_file_diff_json, diff)
-                            commit_file_diff_txt.touch()
-                            write_patch_txt(commit_file_diff_txt, diff)
-                        
-                        datas = get_file_content(repos["linux"], parent_commit, file)
-                        if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
-                            commit_file_bug_json.unlink()
-                            commit_file_bug_json.touch()
-                            write_patch_json(commit_file_bug_json, datas)
-                            commit_file_bug_txt.unlink()
-                            commit_file_bug_txt.touch()
-                            write_patch_txt(commit_file_bug_txt, datas) 
-                        else :
-                            commit_file_bug_json.touch()
-                            write_patch_json(commit_file_bug_json, datas)
-                            commit_file_bug_txt.touch()
-                            write_patch_txt(commit_file_bug_txt, datas)
-                        
-                        datas = get_file_content(repos["linux"], commit, file)
-                        if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
-                            commit_file_fixed_json.unlink()
-                            commit_file_fixed_json.touch()
-                            write_patch_json(commit_file_fixed_json, datas)
-                            commit_file_fixed_txt.unlink()
-                            commit_file_fixed_txt.touch()
-                            write_patch_txt(commit_file_fixed_txt, datas) 
-                        else :
-                            commit_file_fixed_json.touch()
-                            write_patch_json(commit_file_fixed_json, datas)
-                            commit_file_fixed_txt.touch()
-                            write_patch_txt(commit_file_fixed_txt, datas)
-                    
-
-                    
-            elif product == "zulip":
-                cve_patch_directory_json = Path(patch_directory/(pr[3].strip('.json'))/"JSON")
-                cve_patch_directory_txt = Path(patch_directory/(pr[3].strip('.json'))/"TXT")
-                cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
-                cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
-                for x in pr[1]:
-                    if "versions" in x:
-                        for y in x["versions"]:
-                            commit_parent, commit_child = parse_zulip_version(repos["zulip"],y["version"])
-                            
-                            cve_file_json = cve_patch_directory_json/f"{pr[3].strip('.json')}.json"
-                            cve_file_txt = cve_patch_directory_txt/f"{pr[3].strip('.json')}.txt"
-                 
-                            patch = load_patch_zulip(repos["zulip"], commit_parent, commit_child)
-                            
-                            if cve_file_json.exists() or cve_file_txt.exists():
-                                cve_file_json.unlink()
-                                cve_file_json.touch()
-                                write_patch_json(cve_file_json, patch)
-                                cve_file_txt.unlink()
-                                cve_file_txt.touch()
-                                write_patch_txt(cve_file_txt, patch) 
-                            else :
-                                cve_file_json.touch()
-                                write_patch_json(cve_file_json, patch)
-                                cve_file_txt.touch()
-                                write_patch_txt(cve_file_txt, patch)
-            
-            elif product == "tensorflow":
-                
-                tf_repo = Path(repos["tensorflow"])
-                tf_cve_repo = tf_repo.joinpath("tensorflow","security","advisory")
-                for file in tf_cve_repo.iterdir():
-                    cve_id = get_cveid_from_tfrepo(file)
-                    commit_list = get_commit_hash_from_tfrepo(file)
-                    
-                    cve_patch_directory_json = Path(patch_directory/cve_id/"JSON")
-                    cve_patch_directory_txt = Path(patch_directory/cve_id/"TXT")
+                if product == "linux":
+                    cve_patch_directory_json = Path(patch_directory/(pr[3].strip('.json'))/"JSON")
+                    cve_patch_directory_txt = Path(patch_directory/(pr[3].strip('.json'))/"TXT")
                     cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
                     cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
+                    for x in pr[1] : 
+                        if "versions" in x: 
+                            for y in x["versions"] :
+                                if "versionType" in y:
+                                    if y["versionType"] == "git":
+                                        if "lessThan" in y: 
+                                            commits.append(y["lessThan"])
                     
-                    for commit in commit_list:
-                        if is_hexadecimal(commit):
-                            files = get_modified_file(repos["tensorflow"], commit).split("\n")
-                            parent_commit = get_parent_commit(repos["tensorflow"], commit)
+                    for commit in commits:
+                        files = get_modified_file(repos["linux"], commit).split("\n")
+                        parent_commit = get_parent_commit(repos["linux"], commit)
 
-                            for file in files:
+                        for file in files:
+                            commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
+                            commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                            
+                            commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
+                            commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                            
+                            commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
+                            commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+                            
+                            diff = load_patch(repos["linux"], commit, file)
+                            if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
+                                commit_file_diff_json.unlink()
+                                commit_file_diff_json.touch()
+                                write_patch_json(commit_file_diff_json, diff)
+                                commit_file_diff_txt.unlink()
+                                commit_file_diff_txt.touch()
+                                write_patch_txt(commit_file_diff_txt, diff) 
+                            else :
+                                commit_file_diff_json.touch()
+                                write_patch_json(commit_file_diff_json, diff)
+                                commit_file_diff_txt.touch()
+                                write_patch_txt(commit_file_diff_txt, diff)
+                            
+                            datas = get_file_content(repos["linux"], parent_commit, file)
+                            if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
+                                commit_file_bug_json.unlink()
+                                commit_file_bug_json.touch()
+                                write_patch_json(commit_file_bug_json, datas)
+                                commit_file_bug_txt.unlink()
+                                commit_file_bug_txt.touch()
+                                write_patch_txt(commit_file_bug_txt, datas) 
+                            else :
+                                commit_file_bug_json.touch()
+                                write_patch_json(commit_file_bug_json, datas)
+                                commit_file_bug_txt.touch()
+                                write_patch_txt(commit_file_bug_txt, datas)
+                            
+                            datas = get_file_content(repos["linux"], commit, file)
+                            if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
+                                commit_file_fixed_json.unlink()
+                                commit_file_fixed_json.touch()
+                                write_patch_json(commit_file_fixed_json, datas)
+                                commit_file_fixed_txt.unlink()
+                                commit_file_fixed_txt.touch()
+                                write_patch_txt(commit_file_fixed_txt, datas) 
+                            else :
+                                commit_file_fixed_json.touch()
+                                write_patch_json(commit_file_fixed_json, datas)
+                                commit_file_fixed_txt.touch()
+                                write_patch_txt(commit_file_fixed_txt, datas)
+                        
+
+                        
+                elif product == "zulip":
+                    cve_patch_directory_json = Path(patch_directory/(pr[3].strip('.json'))/"JSON")
+                    cve_patch_directory_txt = Path(patch_directory/(pr[3].strip('.json'))/"TXT")
+                    cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
+                    cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
+                    for x in pr[1]:
+                        if "versions" in x:
+                            for y in x["versions"]:
+                                commit_parent, commit_child = parse_zulip_version(repos[product],y["version"])
+                                files = get_modified_file(repos[product], commit_child).split("\n")
                                 
-                                pattern = r"testdata"
-                                match = re.search(pattern, file)
-                                
-                                if match:
-                                    continue
+
+                                for file in files:
+        
+                                    commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit_child}.json"
+                                    commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit_child}.txt"
                                     
-                                if len(file) > 0 and not file.endswith(".bin"):
-                                    commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
-                                    commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                                    commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit_child}.json"
+                                    commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit_child}.txt"
                                     
-                                    commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
-                                    commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                                    commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit_child}.json"
+                                    commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit_child}.txt"
                                     
-                                    commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
-                                    commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
-                                    
-                                    diff = load_patch(repos["tensorflow"], commit, file)
+                                    patch = load_patch(repos[product], commit_child, file)    
                                     if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
                                         commit_file_diff_json.unlink()
                                         commit_file_diff_json.touch()
-                                        write_patch_json(commit_file_diff_json, diff)
+                                        write_patch_json(commit_file_diff_json, patch)
                                         commit_file_diff_txt.unlink()
                                         commit_file_diff_txt.touch()
-                                        write_patch_txt(commit_file_diff_txt, diff) 
+                                        write_patch_txt(commit_file_diff_txt, patch) 
                                     else :
                                         commit_file_diff_json.touch()
-                                        write_patch_json(commit_file_diff_json, diff)
+                                        write_patch_json(commit_file_diff_json, patch)
                                         commit_file_diff_txt.touch()
-                                        write_patch_txt(commit_file_diff_txt, diff)
+                                        write_patch_txt(commit_file_diff_txt, patch)
                                     
-                                    datas = get_file_content(repos["tensorflow"], parent_commit, file)
-                                    if datas == None:
-                                        datas = f"File created by {commit} commit."
+                                    datas = get_file_content(repos[product], commit_parent, file)
                                     if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
                                         commit_file_bug_json.unlink()
                                         commit_file_bug_json.touch()
@@ -418,10 +375,8 @@ def create_commit_patch_db(db, product, vendor):
                                         write_patch_json(commit_file_bug_json, datas)
                                         commit_file_bug_txt.touch()
                                         write_patch_txt(commit_file_bug_txt, datas)
-                                
-                                    datas = get_file_content(repos["tensorflow"], commit, file)
-                                    if datas == None:
-                                        datas = f"File deleted by {commit} commit."
+                                    
+                                    datas = get_file_content(repos[product], commit_child, file)
                                     if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
                                         commit_file_fixed_json.unlink()
                                         commit_file_fixed_json.touch()
@@ -434,6 +389,87 @@ def create_commit_patch_db(db, product, vendor):
                                         write_patch_json(commit_file_fixed_json, datas)
                                         commit_file_fixed_txt.touch()
                                         write_patch_txt(commit_file_fixed_txt, datas)
+    else:
+                
+        tf_repo = Path(repos["tensorflow"])
+        tf_cve_repo = tf_repo.joinpath("tensorflow","security","advisory")
+        for file in tf_cve_repo.iterdir():
+            cve_id = get_cveid_from_tfrepo(file)
+            commit_list = get_commit_hash_from_tfrepo(file)
+            
+            cve_patch_directory_json = Path(patch_directory/cve_id/"JSON")
+            cve_patch_directory_txt = Path(patch_directory/cve_id/"TXT")
+            cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
+            cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
+            
+            for commit in commit_list:
+                if is_hexadecimal(commit):
+                    files = get_modified_file(repos["tensorflow"], commit).split("\n")
+                    parent_commit = get_parent_commit(repos["tensorflow"], commit)
+
+                    for file in files:
+                        
+                        pattern = r"testdata"
+                        match = re.search(pattern, file)
+                        
+                        if match:
+                            continue
+                            
+                        if len(file) > 0 and not file.endswith(".bin"):
+                            commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
+                            commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                            
+                            commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
+                            commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                            
+                            commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
+                            commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+                            
+                            diff = load_patch(repos["tensorflow"], commit, file)
+                            if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
+                                commit_file_diff_json.unlink()
+                                commit_file_diff_json.touch()
+                                write_patch_json(commit_file_diff_json, diff)
+                                commit_file_diff_txt.unlink()
+                                commit_file_diff_txt.touch()
+                                write_patch_txt(commit_file_diff_txt, diff) 
+                            else :
+                                commit_file_diff_json.touch()
+                                write_patch_json(commit_file_diff_json, diff)
+                                commit_file_diff_txt.touch()
+                                write_patch_txt(commit_file_diff_txt, diff)
+                            
+                            datas = get_file_content(repos["tensorflow"], parent_commit, file)
+                            if datas == None:
+                                datas = f"File created by {commit} commit."
+                            if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
+                                commit_file_bug_json.unlink()
+                                commit_file_bug_json.touch()
+                                write_patch_json(commit_file_bug_json, datas)
+                                commit_file_bug_txt.unlink()
+                                commit_file_bug_txt.touch()
+                                write_patch_txt(commit_file_bug_txt, datas) 
+                            else :
+                                commit_file_bug_json.touch()
+                                write_patch_json(commit_file_bug_json, datas)
+                                commit_file_bug_txt.touch()
+                                write_patch_txt(commit_file_bug_txt, datas)
+                        
+                            datas = get_file_content(repos["tensorflow"], commit, file)
+                            if datas == None:
+                                datas = f"File deleted by {commit} commit."
+                            if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
+                                commit_file_fixed_json.unlink()
+                                commit_file_fixed_json.touch()
+                                write_patch_json(commit_file_fixed_json, datas)
+                                commit_file_fixed_txt.unlink()
+                                commit_file_fixed_txt.touch()
+                                write_patch_txt(commit_file_fixed_txt, datas) 
+                            else :
+                                commit_file_fixed_json.touch()
+                                write_patch_json(commit_file_fixed_json, datas)
+                                commit_file_fixed_txt.touch()
+                                write_patch_txt(commit_file_fixed_txt, datas)
 
     print("Database created")
     

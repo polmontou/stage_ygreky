@@ -37,7 +37,7 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
     else:
         return None, None
 
-def get_dates(db, product, vendor, version, year):
+def get_dates(db, product, year):
     result_file_path = create_result_file(product, year if product != "tensorflow" else "2018")
     print("Writing results...")
     for pr in db:       
@@ -46,50 +46,111 @@ def get_dates(db, product, vendor, version, year):
         semvers = []
             
         if pr[0].lower() == product:  
-        
-            for x in pr[1] : 
-                if "versions" in x: 
-                    for y in x["versions"] :
-                        if "versionType" in y:
-                            if y["versionType"] == "git":
-                                if "lessThan" in y: 
-                                    commits.append(y["lessThan"])
-                            elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
-                                if y["status"] == "unaffected":
-                                    if y["version"] != "0":
-                                        semvers.append(y["version"])   
-                                elif y["status"] == "affected":
-                                    semvers.append(y["lessThan"])
             
-            # looking for CVE publication date
-            cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
+            if product == "linux":
+                for x in pr[1] : 
+                    if "versions" in x: 
+                        for y in x["versions"] :
+                            if "versionType" in y:
+                                if y["versionType"] == "git":
+                                    if "lessThan" in y: 
+                                        commits.append(y["lessThan"])
+                                elif y["versionType"] == "semver" or y["versionType"] == "original_commit_for_fix":         
+                                    if y["status"] == "unaffected":
+                                        if y["version"] != "0":
+                                            semvers.append(y["version"])   
+                                    elif y["status"] == "affected":
+                                        semvers.append(y["lessThan"])
+                # looking for CVE publication date
+                cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
                 #writing them in the CSV file
-            line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-            write_datas(result_file_path, line_datas)
+                line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
+                write_datas(result_file_path, line_datas)
+                
+                for commit in commits:
+                    author_date, author_hour = get_author_date_from_commit(repos[product], commit)
+                    committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
+                    release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
+                    #writing author date in CSV file
+                    line_datas = [pr[3], commit, "AD", author_date, author_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    #writing committer date in CSV file
+                    line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    #writing release date in CSV file
+                    line_datas = [pr[3], commit, "RD", release_date, release_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
+                
+            elif product == "zulip":
+                print(pr[3])
+                commits = get_commit_hash_from_zuliprepo(str(pr[2]))
+                commits = list(set(commits))
+                print(commits)
             
-            for commit in commits:
-                
-                #looking for each "lessThan" commit dates (author + committer)
-                author_date, author_hour = get_author_date_from_commit(repos["linux"], commit)
-                committer_date, committer_hour = get_committer_date_from_commit(repos["linux"], commit)
-                release_date, release_hour = get_release_date_from_commit(repos["linux"], commit, semvers)
-                
-                #writing author date in CSV file
-                line_datas = [pr[3], commit, "AD", author_date, author_hour]
+            
+                # looking for CVE publication date
+                cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
+                    #writing them in the CSV file
+                line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
                 write_datas(result_file_path, line_datas)
-                
-                #writing committer date in CSV file
-                line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-                write_datas(result_file_path, line_datas)
-                
-                #writing release date in CSV file
-                line_datas = [pr[3], commit, "RD", release_date, release_hour]
-                write_datas(result_file_path, line_datas)
-                
-                del author_date, author_hour, committer_date, committer_hour
+                if len(commits) == 0:
+                    
+                    for x in pr[1]:
+                        if "versions" in x:
+                            for y in x["versions"]:
+                                commit_parent, commit = parse_zulip_version(repos[product],y["version"])
+                                commit_semver = get_commit_tag_zulip(repos[product], commit)
+                                child_semver = get_child_commit(repos[product], commit_semver)
+                                child_commit = get_commit_hash_from_semver(repos[product], child_semver)
+                                release_date, release_hour = get_committer_date_from_commit(repos[product], child_commit)
+                                print(release_date+" "+release_hour)
+                                
+                                author_date, author_hour = get_author_date_from_commit(repos[product], commit_parent)
+                                committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit_parent)
+                else:
+                    for commit in commits:
+                        #looking for each "lessThan" commit dates (author + committer)
+                        author_date, author_hour = get_author_date_from_commit(repos[product], commit)
+                        committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
+                        
+                        if product != "zulip":
+                            release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
+                        else:
+                            commit_semver = get_commit_tag_zulip(repos[product], commit)
+                            child_semver = get_child_commit(repos[product], commit_semver)
+                            child_commit = get_commit_hash_from_semver(repos[product], child_semver)
+                            release_date, release_hour = get_committer_date_from_commit(repos[product], child_commit)
+                    
+                    #writing author date in CSV file
+                    line_datas = [pr[3], commit, "AD", author_date, author_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    #writing committer date in CSV file
+                    line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    #writing release date in CSV file
+                    line_datas = [pr[3], commit, "RD", release_date, release_hour]
+                    write_datas(result_file_path, line_datas)
+                    
+                    del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
                     
     print("Results writed")
     
+def get_commit_tag_zulip(repository, commit_num):
+    repo=Repo(repository)
+    commit_tag = repo.git.describe('--tags', commit_num)
+    return clean_commit_tag(commit_tag)
+
+def get_commit_hash_from_zuliprepo(cve_content):
+    pattern = r"https://github\.com/zulip/zulip/commit/(\w*)"
+    match = re.findall(pattern, cve_content)
+    return match
+        
 def get_tensorflow_cve_dates():
     result_file_path = create_result_file("tensorflow", "2018")
     print("Writing results...")
@@ -157,7 +218,11 @@ def get_year_from_cve(cve_id):
 def get_release_date_from_commit(repository, commit, semvers):
     commit_tag = get_commit_tag(repository, commit)
     semver = find_recentest_semver(semvers, commit_tag)
-    v_semver = f"v{semver}"
+    if repository != repos["zulip"]:
+        v_semver = f"v{semver}"
+    else:
+        v_semver = semver
+        
     if semver:
         commit_hash = get_commit_hash_from_semver(repository, v_semver)
         release_date, release_hour = get_committer_date_from_commit(repository, commit_hash)
@@ -296,6 +361,8 @@ def create_commit_patch_db(db, product, vendor):
                                 write_patch_txt(commit_file_diff_txt, diff)
                             
                             datas = get_file_content(repos["linux"], parent_commit, file)
+                            if datas == None:
+                                datas = f"File created by {commit} commit."
                             if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
                                 commit_file_bug_json.unlink()
                                 commit_file_bug_json.touch()
@@ -310,6 +377,8 @@ def create_commit_patch_db(db, product, vendor):
                                 write_patch_txt(commit_file_bug_txt, datas)
                             
                             datas = get_file_content(repos["linux"], commit, file)
+                            if datas == None:
+                                datas = f"File deleted by {commit} commit."
                             if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
                                 commit_file_fixed_json.unlink()
                                 commit_file_fixed_json.touch()
@@ -533,14 +602,18 @@ def get_child_commit(repository, commit_parent):
     repo = Repo(repository)
     tags_in_line = repo.git.tag()
     tags = tags_in_line.split("\n")
-    
+    recent_semvers = []
     for tag in tags:
         tag = re.sub(r"^\D*", "", tag)
         tag = re.sub(r"[\-a-z].*$", "", tag)
         if cmp_version(tag, commit_parent) == 1:
-            return tag
-            
-            
+            recent_semvers.append(tag)
+    smallest_one = recent_semvers[0]
+    for semver in recent_semvers:
+        if cmp_version(semver, smallest_one) == -1:
+            smallest_one = semver
+    return smallest_one
+        
 def get_parent_commit(repository, commit_child):
     repo = Repo(repository)
     commit_parent = repo.commit(commit_child).parents[0]

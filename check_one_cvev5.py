@@ -80,7 +80,7 @@ if __name__ == "__main__":
         print("Product count: " + str(len(products)))
     
     
-        get_dates(products, product, vendor, version, minimal_year_wanted)
+        get_dates(products, product, minimal_year_wanted)
     else :
         print("Database loaded")
         get_tensorflow_cve_dates()

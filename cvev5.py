@@ -575,8 +575,7 @@ def parse_zulip_version(repository, version):
 
 def get_child_commit(repository, commit_parent):
     repo = Repo(repository)
-    tags_in_line = repo.git.tag()
-    tags = tags_in_line.split("\n")
+    tags = repo.git.tag("--contains", commit_parent).split("\n")
     recent_semvers = []
     for tag in tags:
         tag = re.sub(r"^\D*", "", tag)
@@ -627,14 +626,29 @@ def check_cves_validity(db, products_object):
                 products_object[pr[0]].check_vendors(pr[1])
                 products_object[pr[0]].entries_count += 1
         else :
-            product.invalid_entries += 1        
+            product.invalid_entries += 1 
+                   
+def count_urls(db, products_object):
+    for pr in db:
+        if pr[0] not in products_object:
+                products_object[pr[0]] = product(pr[0], pr[1])
+        else :
+            products_object[pr[0]].check_vendors(pr[1])
+            products_object[pr[0]].entries_count += 1
+            
+        pattern = r"https://github\.com/\D*/\D*/commit/\w*"
+        match = re.findall(pattern, str(pr[2]))
+        match = list(set(match))
+        products_object[pr[0]].commit_url += len(match)
+              
         
+             
 def write_stats(products_object):
     stats_file_name = create_stats_file()
-    lines_datas = ["product name", "entries count", "fiability rate"]
+    lines_datas = ["product name", "entries count", "fiability rate","commit url count"]
     write_datas(stats_file_name, lines_datas)
     for prod in products_object:
-        lines_datas = [products_object[prod].name, products_object[prod].get_entries(), products_object[prod].get_fiability_rate()]   
+        lines_datas = [products_object[prod].name, products_object[prod].get_entries(), products_object[prod].get_fiability_rate(), products_object[prod].commit_url]   
         write_datas(stats_file_name, lines_datas)
         
 def create_stats_file():
@@ -659,3 +673,5 @@ def is_hexadecimal(num):
         return True
     except ValueError:
         return False
+    
+# 

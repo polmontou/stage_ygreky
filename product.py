@@ -1,5 +1,6 @@
 class product:
     invalid_entries = 0
+    commit_url = 0
     
     def __init__(self, name: str, vendor: str = "n/a"):
         self.name = name

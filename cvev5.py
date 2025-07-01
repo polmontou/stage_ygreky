@@ -157,9 +157,14 @@ def get_tensorflow_cve_dates():
             for commit in commit_list:
                 if is_hexadecimal(commit): 
                     repo = Repo(repos["tensorflow"])
-                    tags = repo.git.tag("--contains", commit).split("\n")
-                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], tags[0])
-                
+                    tags = repo.git.tag("--contains", commit)
+                    smallest_tag = tags [0]
+                    for tag in tags:
+                        if cmp_version(tag, smallest_tag) == -1:
+                            smallest_tag = tag
+                            
+                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], f"v{smallest_tag}")
+
                     
                     #looking for each "lessThan" commit dates (author + committer)
                     author_date, author_hour = get_author_date_from_commit(repos["tensorflow"], commit)
@@ -432,7 +437,7 @@ def create_commit_patch_db(db, product, vendor):
                                         write_patch_txt(commit_file_fixed_txt, datas)
     else:
                 
-        tf_repo = Path(repos[product])
+        tf_repo = Path(repos["tensorflow"])
         tf_cve_repo = tf_repo.joinpath("tensorflow","security","advisory")
         for file in tf_cve_repo.iterdir():
             cve_id = get_cveid_from_tfrepo(file)
@@ -445,8 +450,8 @@ def create_commit_patch_db(db, product, vendor):
             
             for commit in commit_list:
                 if is_hexadecimal(commit):
-                    files = get_modified_file(repos[product], commit).split("\n")
-                    parent_commit = get_parent_commit(repos[product], commit)
+                    files = get_modified_file(repos["tensorflow"], commit).split("\n")
+                    parent_commit = get_parent_commit(repos["tensorflow"], commit)
 
                     for file in files:
                         
@@ -466,7 +471,7 @@ def create_commit_patch_db(db, product, vendor):
                             commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
                             commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
                             
-                            diff = load_patch(repos[product], commit, file)
+                            diff = load_patch(repos["tensorflow"], commit, file)
                             if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
                                 commit_file_diff_json.unlink()
                                 commit_file_diff_json.touch()
@@ -480,7 +485,7 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_file_diff_txt.touch()
                                 write_patch_txt(commit_file_diff_txt, diff)
                             
-                            datas = get_file_content(repos[product], parent_commit, file)
+                            datas = get_file_content(repos["tensorflow"], parent_commit, file)
                             if datas == None:
                                 datas = f"File created by {commit} commit."
                             if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
@@ -496,7 +501,7 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_file_bug_txt.touch()
                                 write_patch_txt(commit_file_bug_txt, datas)
                         
-                            datas = get_file_content(repos[product], commit, file)
+                            datas = get_file_content(repos["tensorflow"], commit, file)
                             if datas == None:
                                 datas = f"File deleted by {commit} commit."
                             if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():

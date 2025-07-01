@@ -61,44 +61,12 @@ def get_dates(db, product, year):
                                             semvers.append(y["version"])   
                                     elif y["status"] == "affected":
                                         semvers.append(y["lessThan"])
-                # looking for CVE publication date
-                cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
-                #writing them in the CSV file
-                line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-                write_datas(result_file_path, line_datas)
-                
-                for commit in commits:
-                    author_date, author_hour = get_author_date_from_commit(repos[product], commit)
-                    committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
-                    release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
-                    #writing author date in CSV file
-                    line_datas = [pr[3], commit, "AD", author_date, author_hour]
-                    write_datas(result_file_path, line_datas)
-                    
-                    #writing committer date in CSV file
-                    line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-                    write_datas(result_file_path, line_datas)
-                    
-                    #writing release date in CSV file
-                    line_datas = [pr[3], commit, "RD", release_date, release_hour]
-                    write_datas(result_file_path, line_datas)
-                    
-                    del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
                 
             elif product == "zulip":
-                print(pr[3])
                 commits = get_commit_hash_from_zuliprepo(str(pr[2]))
                 commits = list(set(commits))
-                print(commits)
-            
-            
-                # looking for CVE publication date
-                cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
-                    #writing them in the CSV file
-                line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
-                write_datas(result_file_path, line_datas)
+
                 if len(commits) == 0:
-                    
                     for x in pr[1]:
                         if "versions" in x:
                             for y in x["versions"]:
@@ -106,38 +74,43 @@ def get_dates(db, product, year):
                                 commit_semver = get_commit_tag_zulip(repos[product], commit)
                                 child_semver = get_child_commit(repos[product], commit_semver)
                                 child_commit = get_commit_hash_from_semver(repos[product], child_semver)
-                                release_date, release_hour = get_committer_date_from_commit(repos[product], child_commit)
-                                print(release_date+" "+release_hour)
-                                
-                                author_date, author_hour = get_author_date_from_commit(repos[product], commit_parent)
-                                committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit_parent)
+                                commits.append(child_commit)
+            
+            # looking for CVE publication date
+            cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
+                #writing them in the CSV file
+            line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
+            write_datas(result_file_path, line_datas)
+            
+            for commit in commits:
+                #looking for each "lessThan" commit dates (author + committer)
+                author_date, author_hour = get_author_date_from_commit(repos[product], commit)
+                committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
+                
+                if product != "zulip":
+                    release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
                 else:
-                    for commit in commits:
-                        #looking for each "lessThan" commit dates (author + committer)
-                        author_date, author_hour = get_author_date_from_commit(repos[product], commit)
-                        committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
-                        
-                        if product != "zulip":
-                            release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
-                        else:
-                            commit_semver = get_commit_tag_zulip(repos[product], commit)
-                            child_semver = get_child_commit(repos[product], commit_semver)
-                            child_commit = get_commit_hash_from_semver(repos[product], child_semver)
-                            release_date, release_hour = get_committer_date_from_commit(repos[product], child_commit)
-                    
-                    #writing author date in CSV file
-                    line_datas = [pr[3], commit, "AD", author_date, author_hour]
-                    write_datas(result_file_path, line_datas)
-                    
-                    #writing committer date in CSV file
-                    line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-                    write_datas(result_file_path, line_datas)
-                    
-                    #writing release date in CSV file
-                    line_datas = [pr[3], commit, "RD", release_date, release_hour]
-                    write_datas(result_file_path, line_datas)
-                    
-                    del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
+                    commit_semver = get_commit_tag_zulip(repos[product], commit)
+                    child_semver = get_child_commit(repos[product], commit_semver)
+                    if not child_semver :
+                        release_date, release_hour = "Not created", "Not created"
+                    else:    
+                        child_commit = get_commit_hash_from_semver(repos[product], child_semver)
+                        release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
+                
+                #writing author date in CSV file
+                line_datas = [pr[3], commit, "AD", author_date, author_hour]
+                write_datas(result_file_path, line_datas)
+                
+                #writing committer date in CSV file
+                line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+                write_datas(result_file_path, line_datas)
+                
+                #writing release date in CSV file
+                line_datas = [pr[3], commit, "RD", release_date, release_hour]
+                write_datas(result_file_path, line_datas)
+                
+                del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
                     
     print("Results writed")
     
@@ -161,7 +134,7 @@ def get_tensorflow_cve_dates():
     for file in tf_cve_repo.iterdir():
         cve_id = get_cveid_from_tfrepo(file)
         commit_list = get_commit_hash_from_tfrepo(file)
-        
+        print(cve_id)
         cve_year = re.sub("CVE-", "", cve_id)
         cve_year = re.sub(r"-\d*", "", cve_year)
         
@@ -183,11 +156,10 @@ def get_tensorflow_cve_dates():
             
             for commit in commit_list:
                 if is_hexadecimal(commit): 
-
-                    commit_semver = get_commit_tag(repos["tensorflow"], commit)
-                    child_semver = get_child_commit(repos["tensorflow"], commit_semver)
-                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], f"v{child_semver}")
-
+                    repo = Repo(repos["tensorflow"])
+                    tags = repo.git.tag("--contains", commit).split("\n")
+                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], tags[0])
+                
                     
                     #looking for each "lessThan" commit dates (author + committer)
                     author_date, author_hour = get_author_date_from_commit(repos["tensorflow"], commit)
@@ -232,7 +204,7 @@ def get_release_date_from_commit(repository, commit, semvers):
     
 def get_commit_tag(repository, commit_num):
     repo=Repo(repository)
-    commit_tag = repo.git.tag('--points-at', commit_num)
+    commit_tag = repo.git.describe('--tags', commit_num)
     return clean_commit_tag(commit_tag)
     
 def clean_commit_tag(commit_tag):
@@ -333,8 +305,8 @@ def create_commit_patch_db(db, product, vendor):
                                             commits.append(y["lessThan"])
                     
                     for commit in commits:
-                        files = get_modified_file(repos["linux"], commit).split("\n")
-                        parent_commit = get_parent_commit(repos["linux"], commit)
+                        files = get_modified_file(repos[product], commit).split("\n")
+                        parent_commit = get_parent_commit(repos[product], commit)
 
                         for file in files:
                             commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
@@ -346,7 +318,7 @@ def create_commit_patch_db(db, product, vendor):
                             commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
                             commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
                             
-                            diff = load_patch(repos["linux"], commit, file)
+                            diff = load_patch(repos[product], commit, file)
                             if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
                                 commit_file_diff_json.unlink()
                                 commit_file_diff_json.touch()
@@ -360,7 +332,7 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_file_diff_txt.touch()
                                 write_patch_txt(commit_file_diff_txt, diff)
                             
-                            datas = get_file_content(repos["linux"], parent_commit, file)
+                            datas = get_file_content(repos[product], parent_commit, file)
                             if datas == None:
                                 datas = f"File created by {commit} commit."
                             if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
@@ -376,7 +348,7 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_file_bug_txt.touch()
                                 write_patch_txt(commit_file_bug_txt, datas)
                             
-                            datas = get_file_content(repos["linux"], commit, file)
+                            datas = get_file_content(repos[product], commit, file)
                             if datas == None:
                                 datas = f"File deleted by {commit} commit."
                             if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
@@ -460,7 +432,7 @@ def create_commit_patch_db(db, product, vendor):
                                         write_patch_txt(commit_file_fixed_txt, datas)
     else:
                 
-        tf_repo = Path(repos["tensorflow"])
+        tf_repo = Path(repos[product])
         tf_cve_repo = tf_repo.joinpath("tensorflow","security","advisory")
         for file in tf_cve_repo.iterdir():
             cve_id = get_cveid_from_tfrepo(file)
@@ -473,8 +445,8 @@ def create_commit_patch_db(db, product, vendor):
             
             for commit in commit_list:
                 if is_hexadecimal(commit):
-                    files = get_modified_file(repos["tensorflow"], commit).split("\n")
-                    parent_commit = get_parent_commit(repos["tensorflow"], commit)
+                    files = get_modified_file(repos[product], commit).split("\n")
+                    parent_commit = get_parent_commit(repos[product], commit)
 
                     for file in files:
                         
@@ -494,7 +466,7 @@ def create_commit_patch_db(db, product, vendor):
                             commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
                             commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
                             
-                            diff = load_patch(repos["tensorflow"], commit, file)
+                            diff = load_patch(repos[product], commit, file)
                             if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
                                 commit_file_diff_json.unlink()
                                 commit_file_diff_json.touch()
@@ -508,7 +480,7 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_file_diff_txt.touch()
                                 write_patch_txt(commit_file_diff_txt, diff)
                             
-                            datas = get_file_content(repos["tensorflow"], parent_commit, file)
+                            datas = get_file_content(repos[product], parent_commit, file)
                             if datas == None:
                                 datas = f"File created by {commit} commit."
                             if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
@@ -524,7 +496,7 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_file_bug_txt.touch()
                                 write_patch_txt(commit_file_bug_txt, datas)
                         
-                            datas = get_file_content(repos["tensorflow"], commit, file)
+                            datas = get_file_content(repos[product], commit, file)
                             if datas == None:
                                 datas = f"File deleted by {commit} commit."
                             if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
@@ -608,6 +580,8 @@ def get_child_commit(repository, commit_parent):
         tag = re.sub(r"[\-a-z].*$", "", tag)
         if cmp_version(tag, commit_parent) == 1:
             recent_semvers.append(tag)
+    if not recent_semvers:
+        return None
     smallest_one = recent_semvers[0]
     for semver in recent_semvers:
         if cmp_version(semver, smallest_one) == -1:

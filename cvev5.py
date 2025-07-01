@@ -157,15 +157,13 @@ def get_tensorflow_cve_dates():
             for commit in commit_list:
                 if is_hexadecimal(commit): 
                     repo = Repo(repos["tensorflow"])
-                    tags = repo.git.tag("--contains", commit)
-                    smallest_tag = tags [0]
+                    tags = repo.git.tag("--contains", commit).split("\n")
+                    smallest_tag = tags[0]
                     for tag in tags:
                         if cmp_version(tag, smallest_tag) == -1:
-                            smallest_tag = tag
-                            
-                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], f"v{smallest_tag}")
+                            smallest_tag = tag   
+                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], smallest_tag)
 
-                    
                     #looking for each "lessThan" commit dates (author + committer)
                     author_date, author_hour = get_author_date_from_commit(repos["tensorflow"], commit)
                     committer_date, committer_hour = get_committer_date_from_commit(repos["tensorflow"], commit)

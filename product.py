@@ -1,6 +1,8 @@
 class product:
     invalid_entries = 0
     commit_url = 0
+    urls = []
+    cves = {}
     
     def __init__(self, name: str, vendor: str = "n/a"):
         self.name = name
@@ -23,4 +25,3 @@ class product:
     def get_fiability_rate(self):
         rate = (self.valid_entries_count/self.entries_count)
         return rate 
-        

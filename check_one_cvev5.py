@@ -84,4 +84,4 @@ if __name__ == "__main__":
     else :
         print("Database loaded")
         get_tensorflow_cve_dates()
-    create_commit_patch_db(products, product, vendor)
+    # create_commit_patch_db(products, product, vendor)

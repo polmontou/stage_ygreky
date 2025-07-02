@@ -8,11 +8,11 @@ from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import UTC
-from git import Repo
+from git import Repo, GitCommandError
 from cmp_version import cmp_version
 from product import product
 
-
+repos_path = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos"
 repos = { 
     "cves" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/cvelistV5",
     "linux" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/linux",
@@ -38,14 +38,15 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
         return None, None
 
 def get_dates(db, product, year):
+    print(product)
     result_file_path = create_result_file(product, year if product != "tensorflow" else "2018")
     print("Writing results...")
     for pr in db:       
         line_datas = []
         commits = []
         semvers = []
-            
-        if pr[0].lower() == product:  
+          
+        if pr[0].lower() == product:
             
             if product == "linux":
                 for x in pr[1] : 
@@ -628,21 +629,105 @@ def check_cves_validity(db, products_object):
         else :
             product.invalid_entries += 1 
                    
-def count_urls(db, products_object):
+def parse_cves(db, products_object):
     for pr in db:
         if pr[0] not in products_object:
                 products_object[pr[0]] = product(pr[0], pr[1])
         else :
             products_object[pr[0]].check_vendors(pr[1])
             products_object[pr[0]].entries_count += 1
+        products_object[pr[0]].cves[pr[3]] = []
+        print(pr[0] + " : " + str(products_object[pr[0]].cves))
+
+    count_urls(db, products_object)
+    for prod in products_object:
+        if products_object[prod].commit_url > 0 :
+            print(products_object[prod].name)
+            print(len(products_object[prod].cves))
             
-        pattern = r"https://github\.com/\D*/\D*/commit/\w*"
+            
+def count_urls(db, products_object):
+    for pr in db:    
+        pattern = r"https://github\.com/\w*/\w*/commit/\w*"
         match = re.findall(pattern, str(pr[2]))
         match = list(set(match))
         products_object[pr[0]].commit_url += len(match)
+        if match:
+            products_object[pr[0]].urls = match
+
               
-        
-             
+def create_folders(products_object):
+    i = 0
+    for prod in products_object: 
+            if products_object[prod].commit_url > 0 and i < 10:
+                path = Path.cwd().joinpath("resultats", products_object[prod].name)
+                path.mkdir(parents = True, exist_ok = True)
+                # clone_repo(products_object[prod])
+                # find_dates(products_object[prod])
+                i += 1
+                
+# def find_dates(product: product):
+#     result_file_path = Path.cwd().joinpath("resultats", product.name, "date")
+#     result_file_path.mkdir(exist_ok=True, parents=True)
+    
+#     pattern = r"https://github\.com/\w*/\w*/commit/(\w*)"
+#     for url in product.urls:
+#         match = re.match(pattern, url)
+#         if match:
+#             # looking for CVE publication date
+#             cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
+#                 #writing them in the CSV file
+#             line_datas = [pr[3],"CVE", "PD", cve_date, cve_hour]
+#             write_datas(result_file_path, line_datas)
+            
+#             for commit in commits:
+#                 #looking for each "lessThan" commit dates (author + committer)
+#                 author_date, author_hour = get_author_date_from_commit(repos[product], commit)
+#                 committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
+                
+#                 if product != "zulip":
+#                     release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
+#                 else:
+#                     commit_semver = get_commit_tag_zulip(repos[product], commit)
+#                     child_semver = get_child_commit(repos[product], commit_semver)
+#                     if not child_semver :
+#                         release_date, release_hour = "Not created", "Not created"
+#                     else:    
+#                         child_commit = get_commit_hash_from_semver(repos[product], child_semver)
+#                         release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
+                
+#                 #writing author date in CSV file
+#                 line_datas = [pr[3], commit, "AD", author_date, author_hour]
+#                 write_datas(result_file_path, line_datas)
+                
+#                 #writing committer date in CSV file
+#                 line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
+#                 write_datas(result_file_path, line_datas)
+                
+#                 #writing release date in CSV file
+#                 line_datas = [pr[3], commit, "RD", release_date, release_hour]
+#                 write_datas(result_file_path, line_datas)
+                
+#                 del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
+                     
+# def clone_repo(product: product):
+#     pattern = r"https://github\.com/(\w*)/(\w*)/commit/\w*"
+#     match = re.match(pattern, product.urls[0])
+#     if match:
+#         name = match.group(1)
+#         project = match.group(2) 
+           
+#     repo_path = Path(repos_path)
+#     project_repo = repo_path.joinpath(project)
+#     if not project_repo in repo_path.iterdir():
+#         git_url = f"git@github.com:{name}/{project}.git"
+#         try:
+#             Repo.clone_from(git_url, project_repo)
+#         except GitCommandError:
+#             print("Repo unreachable")
+#     repos[project] = f"{project_repo}"
+#     print(repos[project])
+     
 def write_stats(products_object):
     stats_file_name = create_stats_file()
     lines_datas = ["product name", "entries count", "fiability rate","commit url count"]

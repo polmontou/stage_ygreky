@@ -67,8 +67,9 @@ if __name__ == "__main__":
                                     # print (data['containers']['cna']['affected'][0])
                                     x = data["containers"]["cna"]["affected"]
                                     urls = data["containers"]["cna"]["references"]
+                                    date = data["cveMetadata"]["datePublished"]
                                     products.append(
-                                        (x[0]["product"].lower(), x[0]["vendor"].lower(), urls, filename)
+                                        (x[0]["product"].lower(), x[0]["vendor"].lower(), urls, filename, date)
                                     )
                                         
                     except KeyError:
@@ -86,9 +87,9 @@ if __name__ == "__main__":
     parse_cves(products, products_object)
 
     
-    # create_folders(products_object)
+    create_folders(products_object)
 
-    products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
+    # products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
     
-    write_stats(products_object_sorted)
+    # write_stats(products_object_sorted)
     

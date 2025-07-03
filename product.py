@@ -1,14 +1,15 @@
 class product:
     invalid_entries = 0
-    commit_url = 0
-    urls = []
-    cves = {}
+
     
     def __init__(self, name: str, vendor: str = "n/a"):
         self.name = name
         self.entries_count = 1
         self.valid_entries_count = 0
         self.check_vendors(vendor)
+        self.commit_url = 0
+        self.urls = []
+        self.cves = {}
                
     def check_vendors(self, vendor):
         if vendor != "n/a":

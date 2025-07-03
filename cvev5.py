@@ -636,14 +636,17 @@ def parse_cves(db, products_object):
         else :
             products_object[pr[0]].check_vendors(pr[1])
             products_object[pr[0]].entries_count += 1
-        products_object[pr[0]].cves[pr[3]] = []
-        print(pr[0] + " : " + str(products_object[pr[0]].cves))
-
+        
+        # print(products_object[pr[0]].name + " : " + pr[3])
+        
+        if pr[0] in products_object:             
+            products_object[pr[0]].cves[pr[3]] = []
+        print("///////")    
+        for prod in products_object:
+            print(list(products_object[prod].cves.keys()))
+               
     count_urls(db, products_object)
-    for prod in products_object:
-        if products_object[prod].commit_url > 0 :
-            print(products_object[prod].name)
-            print(len(products_object[prod].cves))
+    # create_folders(products_object)
             
             
 def count_urls(db, products_object):
@@ -654,7 +657,6 @@ def count_urls(db, products_object):
         products_object[pr[0]].commit_url += len(match)
         if match:
             products_object[pr[0]].urls = match
-
               
 def create_folders(products_object):
     i = 0
@@ -662,7 +664,7 @@ def create_folders(products_object):
             if products_object[prod].commit_url > 0 and i < 10:
                 path = Path.cwd().joinpath("resultats", products_object[prod].name)
                 path.mkdir(parents = True, exist_ok = True)
-                # clone_repo(products_object[prod])
+                clone_repo(products_object[prod])
                 # find_dates(products_object[prod])
                 i += 1
                 
@@ -710,23 +712,24 @@ def create_folders(products_object):
                 
 #                 del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
                      
-# def clone_repo(product: product):
-#     pattern = r"https://github\.com/(\w*)/(\w*)/commit/\w*"
-#     match = re.match(pattern, product.urls[0])
-#     if match:
-#         name = match.group(1)
-#         project = match.group(2) 
+def clone_repo(product: product):
+    pattern = r"https://github\.com/(\w*)/(\w*)/commit/\w*"
+    match = re.match(pattern, product.urls[0])
+    if match:
+        name = match.group(1)
+        project = match.group(2) 
            
-#     repo_path = Path(repos_path)
-#     project_repo = repo_path.joinpath(project)
-#     if not project_repo in repo_path.iterdir():
-#         git_url = f"git@github.com:{name}/{project}.git"
-#         try:
-#             Repo.clone_from(git_url, project_repo)
-#         except GitCommandError:
-#             print("Repo unreachable")
-#     repos[project] = f"{project_repo}"
-#     print(repos[project])
+    repo_path = Path(repos_path)
+    project_repo = repo_path.joinpath(project)
+    if not project_repo in repo_path.iterdir():
+        git_url = f"git@github.com:{name}/{project}.git"
+        try:
+            Repo.clone_from(git_url, project_repo)
+        except GitCommandError:
+            print("Repo unreachable")
+    repos[project] = f"{project_repo}"
+    for project in repos:
+        print(project + " : " + repos[project])
      
 def write_stats(products_object):
     stats_file_name = create_stats_file()
@@ -751,6 +754,7 @@ def create_stats_file():
         stats_file_name.touch()
         print(f"\"{stats_file_name.name}\" file created")
         return stats_file_name
+
 
 def is_hexadecimal(num):
     try:

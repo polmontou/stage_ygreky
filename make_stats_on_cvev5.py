@@ -78,21 +78,17 @@ if __name__ == "__main__":
                     
     print("Database loaded")
     
-    if product != "*":
-        products = sorted(products, key=lambda product: product[0])
-        products_count = len(products)
-    else:
-        products_count = len(products) 
+    products_count = len(products) 
         
     print("Product count: " + str(products_count))
     
     # check_cves_validity(products, products_object)
     parse_cves(products, products_object)
-    # count_urls(products, products_object)
+
     
     # create_folders(products_object)
 
-    # products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
+    products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
     
-    # write_stats(products_object_sorted)
+    write_stats(products_object_sorted)
     

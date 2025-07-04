@@ -38,7 +38,7 @@ def parse_cve_id_with_year(cve, minimal_year_wanted):
         return None, None
 
 def get_dates(db, product, year):
-    print(product)
+
     result_file_path = create_result_file(product, year if product != "tensorflow" else "2018")
     print("Writing results...")
     for pr in db:       
@@ -72,9 +72,9 @@ def get_dates(db, product, year):
                         if "versions" in x:
                             for y in x["versions"]:
                                 commit_parent, commit = parse_zulip_version(repos[product],y["version"])
-                                commit_semver = get_commit_tag_zulip(repos[product], commit)
+                                commit_semver = get_commit_tag(repos[product], commit)
                                 child_semver = get_child_commit(repos[product], commit_semver)
-                                child_commit = get_commit_hash_from_semver(repos[product], child_semver)
+                                child_commit = get_commit_hash_from_tag(repos[product], child_semver)
                                 commits.append(child_commit)
             
             # looking for CVE publication date
@@ -91,12 +91,12 @@ def get_dates(db, product, year):
                 if product != "zulip":
                     release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
                 else:
-                    commit_semver = get_commit_tag_zulip(repos[product], commit)
+                    commit_semver = get_commit_tag(repos[product], commit)
                     child_semver = get_child_commit(repos[product], commit_semver)
                     if not child_semver :
                         release_date, release_hour = "Not created", "Not created"
                     else:    
-                        child_commit = get_commit_hash_from_semver(repos[product], child_semver)
+                        child_commit = get_commit_hash_from_tag(repos[product], child_semver)
                         release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
                 
                 #writing author date in CSV file
@@ -115,7 +115,7 @@ def get_dates(db, product, year):
                     
     print("Results writed")
     
-def get_commit_tag_zulip(repository, commit_num):
+def get_commit_tag(repository, commit_num):
     repo=Repo(repository)
     commit_tag = repo.git.describe('--tags', commit_num)
     return clean_commit_tag(commit_tag)
@@ -135,7 +135,7 @@ def get_tensorflow_cve_dates():
     for file in tf_cve_repo.iterdir():
         cve_id = get_cveid_from_tfrepo(file)
         commit_list = get_commit_hash_from_tfrepo(file)
-        print(cve_id)
+
         cve_year = re.sub("CVE-", "", cve_id)
         cve_year = re.sub(r"-\d*", "", cve_year)
         
@@ -163,7 +163,7 @@ def get_tensorflow_cve_dates():
                     for tag in tags:
                         if cmp_version(tag, smallest_tag) == -1:
                             smallest_tag = tag   
-                    child_commit = get_commit_hash_from_semver(repos["tensorflow"], smallest_tag)
+                    child_commit = get_commit_hash_from_tag(repos["tensorflow"], smallest_tag)
 
                     #looking for each "lessThan" commit dates (author + committer)
                     author_date, author_hour = get_author_date_from_commit(repos["tensorflow"], commit)
@@ -200,7 +200,7 @@ def get_release_date_from_commit(repository, commit, semvers):
         v_semver = semver
         
     if semver:
-        commit_hash = get_commit_hash_from_semver(repository, v_semver)
+        commit_hash = get_commit_hash_from_tag(repository, v_semver)
         release_date, release_hour = get_committer_date_from_commit(repository, commit_hash)
     else:
         release_date, release_hour = "Unknown", "Unknown"
@@ -232,9 +232,9 @@ def find_recentest_semver(semvers, commit_tag):
     else:
         return
 
-def get_commit_hash_from_semver(repository, semver):
+def get_commit_hash_from_tag(repository, tag):
     repo = Repo(repository)
-    commit_hash = repo.git.rev_parse(semver)
+    commit_hash = repo.git.rev_parse(tag)
     return commit_hash
     
     
@@ -553,30 +553,31 @@ def parse_zulip_version(repository, version):
     if "," in version:
         
         commit_child = re.sub(".*<*\\s", "", version)
-        commit_child = get_commit_hash_from_semver(repository, commit_child)
+        commit_child = get_commit_hash_from_tag(repository, commit_child)
         commit_parent = get_parent_commit(repository, commit_child)
          
-        commit_parent = get_commit_hash_from_semver(repository, commit_parent)
-        commit_child = get_commit_hash_from_semver(repository, commit_child)
+        commit_parent = get_commit_hash_from_tag(repository, commit_parent)
+        commit_child = get_commit_hash_from_tag(repository, commit_child)
         
         return commit_parent, commit_child
     else:
         if "<" in version:
             commit_child = re.sub("<*=*\\s", "", version)
-            commit_child = get_commit_hash_from_semver(repository, commit_child)
+            commit_child = get_commit_hash_from_tag(repository, commit_child)
             commit_parent = get_parent_commit(repository, commit_child)
             return commit_parent, commit_child
         else:
             commit_parent = re.sub("=\\s", "", version)
             commit_child = get_child_commit(repository, commit_parent)
             
-            commit_parent = get_commit_hash_from_semver(repository, commit_parent)
-            commit_child = get_commit_hash_from_semver(repository, commit_child)
+            commit_parent = get_commit_hash_from_tag(repository, commit_parent)
+            commit_child = get_commit_hash_from_tag(repository, commit_child)
             return commit_parent, commit_child
 
 def get_child_commit(repository, commit_parent):
     repo = Repo(repository)
     tags = repo.git.tag("--contains", commit_parent).split("\n")
+
     recent_semvers = []
     for tag in tags:
         tag = re.sub(r"^\D*", "", tag)
@@ -631,30 +632,43 @@ def check_cves_validity(db, products_object):
                    
 def parse_cves(db, products_object):
     for pr in db:
-        if pr[0] not in products_object:
-                products_object[pr[0]] = product(pr[0], pr[1])
-        else :
-            products_object[pr[0]].check_vendors(pr[1])
-            products_object[pr[0]].entries_count += 1
-           
-        products_object[pr[0]].cves[pr[3]] = {"publication_date" : pr[4]}
+        if pr[0] == "n/a":
+            pr = list(pr)
+            pr[0] = find_project_name(pr[2])
+        if pr[0] != None:
+            if pr[0] not in products_object:
+                    products_object[pr[0]] = product(pr[0], pr[1])
+            else :
+                products_object[pr[0]].check_vendors(pr[1])
+                products_object[pr[0]].entries_count += 1
         
-    # for prod in products_object:
-    #     for cve in products_object[prod].cves:
-    #         print(products_object[prod].name +" : "+ cve +" => "+ products_object[prod].cves[cve]["publication_date"])          
+            products_object[pr[0]].cves[pr[3]] = {"publication_date" : pr[4]}
+                 
     count_urls(db, products_object)
     # create_folders(products_object)
-            
-            
-def count_urls(db, products_object):
-    for pr in db:    
-        pattern = r"https://github\.com/\w*/\w*/commit/\w*"
-        match = re.findall(pattern, str(pr[2]))
-        match = list(set(match))
-        products_object[pr[0]].commit_url += len(match)
-        if match:
-            products_object[pr[0]].cves[pr[3]]["urls"] = match
+    
+def find_project_name(urls):         
+    pattern = r"https://github\.com/\w*/(\w*)/commit/\w*"
+    match = re.match(pattern, str(urls))
+    if match:
+        match = match.group(1)
+        return match   
+    return None
         
+def count_urls(db, products_object):
+    for pr in db:  
+        if pr[0] == "n/a":
+            pr = list(pr)
+            pr[0] = find_project_name(pr[2])
+        if pr[0] != None:      
+            pattern = r"https://github\.com/\w*/\w*/commit/\w*"
+            match = re.findall(pattern, str(pr[2]))
+            match = list(set(match))
+            products_object[pr[0]].commit_url += len(match)
+            if match:
+                products_object[pr[0]].urls = match
+                products_object[pr[0]].cves[pr[3]]["urls"] = match
+ 
                       
 def create_folders(products_object):
     i = 0
@@ -662,71 +676,77 @@ def create_folders(products_object):
             if products_object[prod].commit_url > 0 and i < 10:
                 path = Path.cwd().joinpath("resultats", products_object[prod].name.replace("/", ":"))
                 path.mkdir(parents = True, exist_ok = True)
-                # clone_repo(products_object[prod])
+                clone_repo(products_object[prod])
                 find_dates(products_object[prod])
                 i += 1
                 
 def find_dates(product: product):
     date = datetime.today().strftime('%Y-%m-%d')
+    result_repo_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"))
     result_file_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"), f"{date}_date.csv")
  
     if result_file_path.exists():
         result_file_path.unlink()
-        print(f"\"{result_file_path.name}\" already exists : file replaced")
+        print(f"\"{result_file_path.name}\" already exists : file deleted")
     result_file_path.touch()
     print(f"\"{result_file_path.name}\" file created")
     
     pattern = r"https://github\.com/\w*/\w*/commit/(\w*)"
     
+    i = 0
     for cve in product.cves:
         if "urls" in product.cves[cve]:
-             # looking for CVE publication date
-            cve_date, cve_hour = parse_date(product.cves[cve]["publication_date"])
-                #writing them in the CSV file
-            line_datas = [cve,"CVE", "PD", cve_date, cve_hour]
-            write_datas(result_file_path, line_datas)
+            try :
+                # looking for CVE publication date
+                cve_date, cve_hour = parse_date(product.cves[cve]["publication_date"])
+                    #writing them in the CSV file
+                line_datas = [cve,"CVE", "PD", cve_date, cve_hour]
+                write_datas(result_file_path, line_datas)
+                
+                for url in product.cves[cve]["urls"]:
             
-            # for url in product.cves[cve]["urls"]:
-            
-        
-            #     match = re.match(pattern, url)
-            #     if match:
+                    match = re.match(pattern, url)
+                    commit = match.group(1)
+                    if match: 
+                        author_date, author_hour = get_author_date_from_commit(repos[product.name], commit)
+                        committer_date, committer_hour = get_committer_date_from_commit(repos[product.name], commit)
+                        
+                        #writing dates in CSV file
+                        line_datas = [cve, commit, "AD", author_date, author_hour, "CD", committer_date, committer_hour]
+                        write_datas(result_file_path, line_datas)
+                        del author_date, author_hour, committer_date, committer_hour
+                        
+                        i += 1
+                        
+            except Exception as e:
+                continue
+    if i == 0 :
+        result_file_path.unlink()
+        result_repo_path.rmdir()                
+                    # if product != "zulip":
+                    #     release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
+                    # else:
+                    #     commit_semver = get_commit_tag(repos[product], commit)
+                    #     child_semver = get_child_commit(repos[product], commit_semver)
+                    #     if not child_semver :
+                    #         release_date, release_hour = "Not created", "Not created"
+                    #     else:    
+                    #         child_commit = get_commit_hash_from_tag(repos[product], child_semver)
+                    #         release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
                     
-            #         # looking for CVE publication date
-            #         cve_date, cve_hour = parse_date(product.cves[cve]["publication_date"])
-            #             #writing them in the CSV file
-            #         line_datas = [cve,"CVE", "PD", cve_date, cve_hour]
-            #         write_datas(result_file_path, line_datas)
+                    # #writing author date in CSV file
+                    # line_datas = [cve, commit, "AD", author_date, author_hour]
+                    # write_datas(result_file_path, line_datas)
                     
-            #         for commit in commits:
-            #             #looking for each "lessThan" commit dates (author + committer)
-            #             author_date, author_hour = get_author_date_from_commit(repos[product], commit)
-            #             committer_date, committer_hour = get_committer_date_from_commit(repos[product], commit)
-                        
-            #             if product != "zulip":
-            #                 release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
-            #             else:
-            #                 commit_semver = get_commit_tag_zulip(repos[product], commit)
-            #                 child_semver = get_child_commit(repos[product], commit_semver)
-            #                 if not child_semver :
-            #                     release_date, release_hour = "Not created", "Not created"
-            #                 else:    
-            #                     child_commit = get_commit_hash_from_semver(repos[product], child_semver)
-            #                     release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
-                        
-            #             #writing author date in CSV file
-            #             line_datas = [pr[3], commit, "AD", author_date, author_hour]
-            #             write_datas(result_file_path, line_datas)
-                        
-            #             #writing committer date in CSV file
-            #             line_datas = [pr[3], commit, "CD", committer_date, committer_hour]
-            #             write_datas(result_file_path, line_datas)
-                        
-            #             #writing release date in CSV file
-            #             line_datas = [pr[3], commit, "RD", release_date, release_hour]
-            #             write_datas(result_file_path, line_datas)
-                        
-            #             del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
+                    # #writing committer date in CSV file
+                    # line_datas = [cve, commit, "CD", committer_date, committer_hour]
+                    # write_datas(result_file_path, line_datas)
+                    
+                    # #writing release date in CSV file
+                    # line_datas = [pr[3], commit, "RD", release_date, release_hour]
+                    # write_datas(result_file_path, line_datas)
+                    
+                    # del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
                      
 def clone_repo(product: product):
     pattern = r"https://github\.com/(\w*)/(\w*)/commit/\w*"
@@ -737,15 +757,15 @@ def clone_repo(product: product):
            
     repo_path = Path(repos_path)
     project_repo = repo_path.joinpath(project)
+    
     if not project_repo in repo_path.iterdir():
         git_url = f"git@github.com:{name}/{project}.git"
         try:
             Repo.clone_from(git_url, project_repo)
         except GitCommandError:
             print("Repo unreachable")
-    repos[project] = f"{project_repo}"
-    for project in repos:
-        print(project + " : " + repos[project])
+    repos[project.lower()] = f"{project_repo}"
+
      
 def write_stats(products_object):
     stats_file_name = create_stats_file()

@@ -2,7 +2,7 @@
 
 Both scripts (**parse_cves_repo.py** and **check_one_cvev58.py**) allows you to get some datas from CVEs.
 
-- **check_one_cvev5.py** is made to parse 3 specifics products (you have to specify which one you want it to parse when call the script) : Linux, Tensorflow and Zulip
+- **check_one_cvev5.py** is made to parse 3 specifics products (you have to specify which one you want it to parse when you call the script) : Linux, Tensorflow and Zulip.
 It creates a .csv file for each product where you'll find each CVE's dates and each commit corresponding to each CVE with author, committer and release date for each commit. It also creates a database contening 6 files per file modified by a commit : (3* .txt and 3* .json): 1x git diff (D), 1x vulnerable code (V), 1x patched code (NV). 
 There's some specific arguments you can/have to pass to the script:
     - **-i** : **required** this is the input directory, you have to specify the path to CVE's local repo (you have to clone the CVE's repo: git@github.com:CVEProject/cvelistV5.git)

@@ -15,7 +15,6 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--product", help="Product name", required=True)
     parser.add_argument("-e", "--vendor", help="Vendor name", default=None)
     parser.add_argument("-y", "--minimal-year-wanted", help="Since when", default=None)
-    parser.add_argument("-r", "--version", help="Product version", default=None)
 
     args = parser.parse_args()
 
@@ -35,21 +34,16 @@ if __name__ == "__main__":
     else:
         minimal_year_wanted = "0"
         
-    if args.version is not None:
-        version = args.version
-    else:
-        version = "*"
-    
     
         
     products = []
     
-    # print("Updating datas from distant repositories...")
+    print("Updating datas from distant repositories...")
     
-    # for repo in repos :
-    #     git_pull_repo(repos[repo])
+    for repo in repos :
+        git_pull_repo(repos[repo])
         
-    # print("Update done")
+    print("Update done")
     
     print("Loading database...")
     if product != "tensorflow": 
@@ -84,4 +78,4 @@ if __name__ == "__main__":
     else :
         print("Database loaded")
         get_tensorflow_cve_dates()
-    # create_commit_patch_db(products, product, vendor)
+    create_commit_patch_db(products, product, vendor)

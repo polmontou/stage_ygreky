@@ -720,9 +720,9 @@ def find_dates_and_datas(product: product):
                         
                         i += 1
                         
-                        files = get_modified_file(repos[product.name], commit).split("\n")
-                        
+                        files = get_modified_file(repos[product.name], commit).split("\n")                        
                         parent_commit = get_parent_commit(repos[product.name], commit)
+
 
                         if len(files) > 0:
                             
@@ -730,6 +730,25 @@ def find_dates_and_datas(product: product):
                             cve_patch_directory_txt = datas_file_path.joinpath("TXT")
                             cve_patch_directory_json.mkdir(parents=True)
                             cve_patch_directory_txt.mkdir(parents=True)
+                            
+                            metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit}.json")
+                            metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit}.txt")
+                            
+                            metadatas = get_commits_metadatas(repos[product.name], commit)
+                            if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
+                                metadata_commit_file_json.unlink()
+                                metadata_commit_file_json.touch()
+                                write_patch_json(metadata_commit_file_json, metadatas)
+                                metadata_commit_file_txt.unlink()
+                                metadata_commit_file_txt.touch()
+                                write_patch_txt(metadata_commit_file_txt, metadatas) 
+                            else :
+                                metadata_commit_file_json.touch()
+                                write_patch_json(metadata_commit_file_json, metadatas)
+                                metadata_commit_file_txt.touch()
+                                write_patch_txt(metadata_commit_file_txt, metadatas)
+                            
+                            
                             
                             for file in files:
                                 try :
@@ -796,7 +815,11 @@ def find_dates_and_datas(product: product):
     if i == 0 :
         result_file_path.unlink()
         result_repo_path.rmdir()
-                       
+        
+def get_commits_metadatas(repository, commit):
+    repo = Repo(repository)
+    metadatas = repo.git.show("-s", commit)
+    return metadatas                      
                      
 def clone_repo(product: product):
     pattern = r"https://github\.com/(\w*)/(\w*)/commit/\w*"

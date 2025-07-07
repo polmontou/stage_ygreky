@@ -1,27 +1,28 @@
-# Proof of concept CVEv5 usage for CVE checking
+## Checks CVEs 
 
-This is a proof-of-concept tooling for checking for CVEs in a given
-product using the CVEv5 database (JSON format).
+Both scripts (**parse_cves_repo.py** and **check_one_cvev58.py**) allows you to get some datas from CVEs.
 
-## Usage
+- **check_one_cvev5.py** is made to parse 3 specifics products (you have to specify which one you want it to parse when call the script) : Linux, Tensorflow and Zulip
+It creates a .csv file for each product where you'll find each CVE's dates and each commit corresponding to each CVE with author, committer and release date for each commit. It also creates a database contening 6 files per file modified by a commit : (3* .txt and 3* .json): 1x git diff (D), 1x vulnerable code (V), 1x patched code (NV). 
+There's some specific arguments you can/have to pass to the script:
+    - **-i** : **required** this is the input directory, you have to specify the path to CVE's local repo (you have to clone the CVE's repo: git@github.com:CVEProject/cvelistV5.git)
+    - **-p** : **required** the product you want to parse (so Linux, Tensorflow or Zulip)
+    - **-v** : *optionnal* you can specify which vendor you want
+    - **-y** : *optionnal* you can specify since which year you want to parse CVE's (doesn't for Tensorflow, it automatically begins in 2018)
 
-Example use:
+    For this script, you have to clone Linux, Tensorflow and Zulip repos :
+        - [Linux](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git)
+        - [Tensorflow](git@github.com:tensorflow/tensorflow.git)
+        - [Zulip](git@github.com:zulip/zulip.git)
 
-python check_one_cvev5.py -i cves/ -p curl -r 7.59.0
+- **parse_cves_repo.py** is made to parse all CVE's entries, seek for a specific pattern in each CVE to see if it can fetch datas from distant repos, if it's the case, it clones distant repo and creates a folder per poduct in which we will have the same datas than in the precedent script. 
+Here, you hace to specify :
+    - **-i** : **required** this is the input directory, you have to specify the path to CVE's local repo (you have to clone the CVE's repo: git@github.com:CVEProject/cvelistV5.git)
+    - **-q**: **required** you specify the number of products you want to parse (that's not the number of products you'll have in output because sometimes datas are unreachable even if we have the distant repo)
 
-We check using the database in the local directory cves/
-for product "curl" in version 7.59.0
+# You have to :
 
-## Data sources
-
-This tool uses data as formatted in https://github.com/CVEProject/cvelistV5
-or a copy of this repository with fixes of malformed entries.
-
-Tested with:
-https://github.com/mrybczyn/cvelistV5-overrides
-
-You are welcome to submit pull requests to the above repository.
-
-## TODO
-
-* The work to integrate it with other tooling for massive checks
+- Download the **cmp_version** library with :
+    ```pip install cmp_version```
+    
+- Modify pathes in **cvev5.py**, at the beginnig of the script in *repos_path* (where you want the 2nd script to clone all the repos to parse CVE) and *repos* (linux, tensorflow, cves, zulip) 

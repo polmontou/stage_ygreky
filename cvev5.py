@@ -735,7 +735,7 @@ def find_dates_and_datas(product: product):
     date = datetime.today().strftime('%Y-%m-%d')
     result_repo_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"))
     datas_file_path = result_repo_path.joinpath("patch")
-    result_file_path = result_repo_path.joinpath(f"{date}_{product.name}_dates.csv")
+    result_file_path = result_repo_path.joinpath(f"{date}_{product.name.replace("/", ":")}_dates.csv")
  
     if result_file_path.exists():
         result_file_path.unlink()

@@ -2,6 +2,7 @@ import json
 import os
 import re
 import argparse
+from pathlib import Path
 from cvev5 import git_pull_repo, parse_cve_id_with_year, check_cves_validity, write_stats, parse_cves, create_folders, repos
 
 
@@ -29,8 +30,12 @@ if __name__ == "__main__":
     
     print("Updating datas from distant repositories...")
 
-    for repo in repos :
-        git_pull_repo(repos[repo])
+    for repo in Path.cwd().parent.joinpath("repos").iterdir():
+        print(repo)
+        try:
+            git_pull_repo(repo)
+        except:
+            print("error")
         
     print("Update done")
 

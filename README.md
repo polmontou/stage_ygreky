@@ -11,9 +11,9 @@ There's some specific arguments you can/have to pass to the script:
     - **-y** : *optionnal* you can specify since which year you want to parse CVE's (doesn't for Tensorflow, it automatically begins in 2018)
 
     For this script, you have to clone Linux, Tensorflow and Zulip repos :
-        - [Linux](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git)\n
-        - [Tensorflow](git@github.com:tensorflow/tensorflow.git)\n
-        - [Zulip](git@github.com:zulip/zulip.git)\n
+        - [Linux](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git)
+        - [Tensorflow](https://github.com/tensorflow/tensorflow.git)
+        - [Zulip](https://github.com/zulip/zulip.git)
 
 - **parse_cves_repo.py** is made to parse all CVE's entries, seek for a specific pattern in each CVE to see if it can fetch datas from distant repos, if it's the case, it clones distant repo and creates a folder per poduct in which we will have the same datas than in the precedent script. 
 Here, you hace to specify :

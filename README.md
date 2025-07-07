@@ -17,7 +17,7 @@ There's some specific arguments you can/have to pass to the script:
 
     <u>ex :<u> python3 check_one_cvev5.py -i <input_dir> -p linux -y 2025
   
-- **parse_cves_repo.py** is made to parse all CVE's entries, seek for a specific pattern in each CVE to see if it can fetch datas from distant repos, if it's the case, it clones distant repo and creates a folder per poduct in which we will have the same datas than in the precedent script. 
+- **parse_cves_repo.py** is made to parse all CVE's entries, seek for a specific pattern in each CVE to see if it can fetch datas from distant repos, if it's the case, it clones distant repo and creates a folder per poduct in which we will have the same datas than in the precedent script (except release date of each commit). 
 Here, you hace to specify :
     - **-i** : **required** this is the input directory, you have to specify the path to CVE's local repo (you have to clone the CVE's repo: git@github.com:CVEProject/cvelistV5.git)
     - **-q**: **required** you specify the number of products you want to parse (that's not the number of products you'll have in output because sometimes datas are unreachable even if we have the distant repo)

@@ -311,6 +311,23 @@ def create_commit_patch_db(db, product, vendor):
                     for commit in commits:
                         files = get_modified_file(repos[product], commit).split("\n")
                         parent_commit = get_parent_commit(repos[product], commit)
+                        
+                        metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit}.json")
+                        metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit}.txt")
+                        
+                        metadatas = get_commits_metadatas(repos[product], commit)
+                        if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
+                            metadata_commit_file_json.unlink()
+                            metadata_commit_file_json.touch()
+                            write_patch_json(metadata_commit_file_json, metadatas)
+                            metadata_commit_file_txt.unlink()
+                            metadata_commit_file_txt.touch()
+                            write_patch_txt(metadata_commit_file_txt, metadatas) 
+                        else :
+                            metadata_commit_file_json.touch()
+                            write_patch_json(metadata_commit_file_json, metadatas)
+                            metadata_commit_file_txt.touch()
+                            write_patch_txt(metadata_commit_file_txt, metadatas)
 
                         for file in files:
                             commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
@@ -381,6 +398,22 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_parent, commit_child = parse_zulip_version(repos[product],y["version"])
                                 files = get_modified_file(repos[product], commit_child).split("\n")
                                 
+                                metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit_parent}.json")
+                                metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit_parent}.txt")
+                                
+                                metadatas = get_commits_metadatas(repos[product], commit_parent)
+                                if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
+                                    metadata_commit_file_json.unlink()
+                                    metadata_commit_file_json.touch()
+                                    write_patch_json(metadata_commit_file_json, metadatas)
+                                    metadata_commit_file_txt.unlink()
+                                    metadata_commit_file_txt.touch()
+                                    write_patch_txt(metadata_commit_file_txt, metadatas) 
+                                else :
+                                    metadata_commit_file_json.touch()
+                                    write_patch_json(metadata_commit_file_json, metadatas)
+                                    metadata_commit_file_txt.touch()
+                                    write_patch_txt(metadata_commit_file_txt, metadatas)
 
                                 for file in files:
         
@@ -447,11 +480,28 @@ def create_commit_patch_db(db, product, vendor):
             cve_patch_directory_json.mkdir(parents = True, exist_ok=True)
             cve_patch_directory_txt.mkdir(parents = True, exist_ok=True)
             
+            
             for commit in commit_list:
                 if is_hexadecimal(commit):
                     files = get_modified_file(repos["tensorflow"], commit).split("\n")
                     parent_commit = get_parent_commit(repos["tensorflow"], commit)
-
+                    metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit}.json")
+                    metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit}.txt")
+                    
+                    metadatas = get_commits_metadatas(repos[product], commit)
+                    if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
+                        metadata_commit_file_json.unlink()
+                        metadata_commit_file_json.touch()
+                        write_patch_json(metadata_commit_file_json, metadatas)
+                        metadata_commit_file_txt.unlink()
+                        metadata_commit_file_txt.touch()
+                        write_patch_txt(metadata_commit_file_txt, metadatas) 
+                    else :
+                        metadata_commit_file_json.touch()
+                        write_patch_json(metadata_commit_file_json, metadatas)
+                        metadata_commit_file_txt.touch()
+                        write_patch_txt(metadata_commit_file_txt, metadatas)
+                        
                     for file in files:
                         
                         pattern = r"testdata"
@@ -685,7 +735,7 @@ def find_dates_and_datas(product: product):
     date = datetime.today().strftime('%Y-%m-%d')
     result_repo_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"))
     datas_file_path = result_repo_path.joinpath("patch")
-    result_file_path = result_repo_path.joinpath(f"{date}_date.csv")
+    result_file_path = result_repo_path.joinpath(f"{date}_{product.name}_dates.csv")
  
     if result_file_path.exists():
         result_file_path.unlink()

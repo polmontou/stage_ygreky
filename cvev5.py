@@ -670,10 +670,10 @@ def count_urls(db, products_object):
                 products_object[pr[0]].cves[pr[3]]["urls"] = match
  
                       
-def create_folders(products_object):
+def create_folders(products_object, quantity):
     i = 0
     for prod in products_object: 
-            if products_object[prod].commit_url > 0 and i < 60:
+            if products_object[prod].commit_url > 0 and i < int(quantity):
                 path = Path.cwd().joinpath("resultats", products_object[prod].name.replace("/", ":"))
                 path.mkdir(parents = True, exist_ok = True)
                 clone_repo(products_object[prod])

@@ -673,17 +673,19 @@ def count_urls(db, products_object):
 def create_folders(products_object):
     i = 0
     for prod in products_object: 
-            if products_object[prod].commit_url > 0 and i < 10:
+            if products_object[prod].commit_url > 0 and i < 60:
                 path = Path.cwd().joinpath("resultats", products_object[prod].name.replace("/", ":"))
                 path.mkdir(parents = True, exist_ok = True)
                 clone_repo(products_object[prod])
-                find_dates(products_object[prod])
-                i += 1
+                find_dates_and_datas(products_object[prod])
+                i += 1                
+
                 
-def find_dates(product: product):
+def find_dates_and_datas(product: product):
     date = datetime.today().strftime('%Y-%m-%d')
     result_repo_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"))
-    result_file_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"), f"{date}_date.csv")
+    datas_file_path = result_repo_path.joinpath("patch")
+    result_file_path = result_repo_path.joinpath(f"{date}_date.csv")
  
     if result_file_path.exists():
         result_file_path.unlink()
@@ -700,7 +702,7 @@ def find_dates(product: product):
                 # looking for CVE publication date
                 cve_date, cve_hour = parse_date(product.cves[cve]["publication_date"])
                     #writing them in the CSV file
-                line_datas = [cve,"CVE", "PD", cve_date, cve_hour]
+                line_datas = [cve,"CVE", "PD", cve_date, cve_hour, "-","-","-"]
                 write_datas(result_file_path, line_datas)
                 
                 for url in product.cves[cve]["urls"]:
@@ -718,35 +720,83 @@ def find_dates(product: product):
                         
                         i += 1
                         
+                        files = get_modified_file(repos[product.name], commit).split("\n")
+                        
+                        parent_commit = get_parent_commit(repos[product.name], commit)
+
+                        if len(files) > 0:
+                            
+                            cve_patch_directory_json = datas_file_path.joinpath("JSON")
+                            cve_patch_directory_txt = datas_file_path.joinpath("TXT")
+                            cve_patch_directory_json.mkdir(parents=True)
+                            cve_patch_directory_txt.mkdir(parents=True)
+                            
+                            for file in files:
+                                try :
+                                    if len(file) > 0 and not file.endswith(".bin"):
+                                        commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
+                                        commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                                        
+                                        commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
+                                        commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                                        
+                                        commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
+                                        commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+
+                                        diff = load_patch(repos[product.name], commit, file)
+                                        if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
+                                            commit_file_diff_json.unlink()
+                                            commit_file_diff_json.touch()
+                                            write_patch_json(commit_file_diff_json, diff)
+                                            commit_file_diff_txt.unlink()
+                                            commit_file_diff_txt.touch()
+                                            write_patch_txt(commit_file_diff_txt, diff) 
+                                        else :
+                                            commit_file_diff_json.touch()
+                                            write_patch_json(commit_file_diff_json, diff)
+                                            commit_file_diff_txt.touch()
+                                            write_patch_txt(commit_file_diff_txt, diff)
+                                        
+                                        datas = get_file_content(repos[product.name], parent_commit, file)
+                                        if datas == None:
+                                            datas = f"File created by {commit} commit."
+                                        if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
+                                            commit_file_bug_json.unlink()
+                                            commit_file_bug_json.touch()
+                                            write_patch_json(commit_file_bug_json, datas)
+                                            commit_file_bug_txt.unlink()
+                                            commit_file_bug_txt.touch()
+                                            write_patch_txt(commit_file_bug_txt, datas) 
+                                        else :
+                                            commit_file_bug_json.touch()
+                                            write_patch_json(commit_file_bug_json, datas)
+                                            commit_file_bug_txt.touch()
+                                            write_patch_txt(commit_file_bug_txt, datas)
+                                    
+                                        datas = get_file_content(repos[product.name], commit, file)
+                                        if datas == None:
+                                            datas = f"File deleted by {commit} commit."
+                                        if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
+                                            commit_file_fixed_json.unlink()
+                                            commit_file_fixed_json.touch()
+                                            write_patch_json(commit_file_fixed_json, datas)
+                                            commit_file_fixed_txt.unlink()
+                                            commit_file_fixed_txt.touch()
+                                            write_patch_txt(commit_file_fixed_txt, datas) 
+                                        else :
+                                            commit_file_fixed_json.touch()
+                                            write_patch_json(commit_file_fixed_json, datas)
+                                            commit_file_fixed_txt.touch()
+                                            write_patch_txt(commit_file_fixed_txt, datas)
+                                except:
+                                    continue
+                        
             except Exception as e:
                 continue
     if i == 0 :
         result_file_path.unlink()
-        result_repo_path.rmdir()                
-                    # if product != "zulip":
-                    #     release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
-                    # else:
-                    #     commit_semver = get_commit_tag(repos[product], commit)
-                    #     child_semver = get_child_commit(repos[product], commit_semver)
-                    #     if not child_semver :
-                    #         release_date, release_hour = "Not created", "Not created"
-                    #     else:    
-                    #         child_commit = get_commit_hash_from_tag(repos[product], child_semver)
-                    #         release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
-                    
-                    # #writing author date in CSV file
-                    # line_datas = [cve, commit, "AD", author_date, author_hour]
-                    # write_datas(result_file_path, line_datas)
-                    
-                    # #writing committer date in CSV file
-                    # line_datas = [cve, commit, "CD", committer_date, committer_hour]
-                    # write_datas(result_file_path, line_datas)
-                    
-                    # #writing release date in CSV file
-                    # line_datas = [pr[3], commit, "RD", release_date, release_hour]
-                    # write_datas(result_file_path, line_datas)
-                    
-                    # del author_date, author_hour, committer_date, committer_hour, release_date, release_hour
+        result_repo_path.rmdir()
+                       
                      
 def clone_repo(product: product):
     pattern = r"https://github\.com/(\w*)/(\w*)/commit/\w*"

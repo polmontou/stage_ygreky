@@ -28,4 +28,4 @@ This script clones all the products' repo it will find.
 
 - Download the all the libraries in **requirements.txt**.
     
-- Modify pathes in **cvev5.py**, at the beginnig of the script in *repos_path* (where you want this scripts to clone distant repos)
+- Modify pathes in **cvev5.py**, at the beginnig of the script in *repos_path* (where you want those scripts to clone distant repos)

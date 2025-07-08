@@ -87,12 +87,14 @@ def get_dates(db, product, year):
                     for x in pr[1]:
                         if "versions" in x:
                             for y in x["versions"]:
-                                commit_parent, commit = parse_zulip_version(repos[product],y["version"])
-                                commit_semver = get_commit_tag(repos[product], commit)
-                                child_semver = get_child_commit(repos[product], commit_semver)
-                                child_commit = get_commit_hash_from_tag(repos[product], child_semver)
-                                commits.append(child_commit)
-            
+                                try:
+                                    commit_parent, commit = parse_zulip_version(repos[product],y["version"])
+                                    commit_semver = get_commit_tag(repos[product], commit)
+                                    child_semver = get_child_commit(repos[product], commit_semver)
+                                    child_commit = get_commit_hash_from_tag(repos[product], child_semver)
+                                    commits.append(child_commit)
+                                except:
+                                    pass
             # looking for CVE publication date
             cve_date, cve_hour = get_publication_date_from_CVE(pr[2])
                 #writing them in the CSV file
@@ -108,12 +110,14 @@ def get_dates(db, product, year):
                     release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
                 else:
                     commit_semver = get_commit_tag(repos[product], commit)
+                    print(commit_semver)
                     child_semver = get_child_commit(repos[product], commit_semver)
+                    print(child_semver)
                     if not child_semver :
-                        release_date, release_hour = "Not created", "Not created"
+                        release_date, release_hour = "Not found", "Not found"
                     else:    
                         child_commit = get_commit_hash_from_tag(repos[product], child_semver)
-                        release_date, release_hour = get_committer_date_from_commit(repos[product], commit)
+                        release_date, release_hour = get_committer_date_from_commit(repos[product], child_commit)
                 
                 #writing author date in CSV file
                 line_datas = [pr[3], commit, "AD", author_date, author_hour]
@@ -228,8 +232,8 @@ def get_commit_tag(repository, commit_num):
     return clean_commit_tag(commit_tag)
     
 def clean_commit_tag(commit_tag):
-    clean_commit_tag = re.sub("[a-zA-Z]", "", commit_tag)
-    clean_commit_tag = re.sub("-.*","", clean_commit_tag)
+    clean_commit_tag = re.sub(r"\s[a-zA-Z]\s", "", commit_tag)
+    clean_commit_tag = re.sub(r"\s-.*\s","", clean_commit_tag)
     return clean_commit_tag
    
     
@@ -250,6 +254,9 @@ def find_recentest_semver(semvers, commit_tag):
 
 def get_commit_hash_from_tag(repository, tag):
     repo = Repo(repository)
+    tag = re.sub(r"[a-zA-Z]", "", tag)
+    tag = re.sub(" ", "",tag)
+    tag = re.sub(r"-.*","", tag)
     commit_hash = repo.git.rev_parse(tag)
     return commit_hash
     
@@ -411,78 +418,80 @@ def create_commit_patch_db(db, product, vendor):
                     for x in pr[1]:
                         if "versions" in x:
                             for y in x["versions"]:
+                                print(pr[3])
                                 commit_parent, commit_child = parse_zulip_version(repos[product],y["version"])
-                                files = get_modified_file(repos[product], commit_child).split("\n")
-                                
-                                metadata_commit_file_json = cve_patch_directory_json/(f"{pr[3]}_MD_{commit_parent}.json")
-                                metadata_commit_file_txt = cve_patch_directory_txt/(f"{pr[3]}_MD_{commit_parent}.txt")
-                                
-                                metadatas = get_commits_metadatas(repos[product], commit_parent)
-                                if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
-                                    metadata_commit_file_json.unlink()
-                                    metadata_commit_file_json.touch()
-                                    write_patch_json(metadata_commit_file_json, metadatas)
-                                    metadata_commit_file_txt.unlink()
-                                    metadata_commit_file_txt.touch()
-                                    write_patch_txt(metadata_commit_file_txt, metadatas) 
-                                else :
-                                    metadata_commit_file_json.touch()
-                                    write_patch_json(metadata_commit_file_json, metadatas)
-                                    metadata_commit_file_txt.touch()
-                                    write_patch_txt(metadata_commit_file_txt, metadatas)
+                                if commit_child != None :
+                                    files = get_modified_file(repos[product], commit_child).split("\n")
+                                    
+                                    metadata_commit_file_json = cve_patch_directory_json/(f"{pr[3]}_MD_{commit_parent}.json")
+                                    metadata_commit_file_txt = cve_patch_directory_txt/(f"{pr[3]}_MD_{commit_parent}.txt")
+                                    
+                                    metadatas = get_commits_metadatas(repos[product], commit_parent)
+                                    if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
+                                        metadata_commit_file_json.unlink()
+                                        metadata_commit_file_json.touch()
+                                        write_patch_json(metadata_commit_file_json, metadatas)
+                                        metadata_commit_file_txt.unlink()
+                                        metadata_commit_file_txt.touch()
+                                        write_patch_txt(metadata_commit_file_txt, metadatas) 
+                                    else :
+                                        metadata_commit_file_json.touch()
+                                        write_patch_json(metadata_commit_file_json, metadatas)
+                                        metadata_commit_file_txt.touch()
+                                        write_patch_txt(metadata_commit_file_txt, metadatas)
 
-                                for file in files:
-        
-                                    commit_file_diff_json = cve_patch_directory_json/f"{pr[3]}_D_{file.replace("/",":")}_{commit_child}.json"
-                                    commit_file_diff_txt = cve_patch_directory_txt/f"{pr[3]}_D_{file.replace("/",":")}_{commit_child}.txt"
-                                    
-                                    commit_file_bug_json = cve_patch_directory_json/f"{pr[3]}_V_{file.replace("/",":")}_{commit_child}.json"
-                                    commit_file_bug_txt = cve_patch_directory_txt/f"{pr[3]}_V_{file.replace("/",":")}_{commit_child}.txt"
-                                    
-                                    commit_file_fixed_json = cve_patch_directory_json/f"{pr[3]}_NV_{file.replace("/",":")}_{commit_child}.json"
-                                    commit_file_fixed_txt = cve_patch_directory_txt/f"{pr[3]}_NV_{file.replace("/",":")}_{commit_child}.txt"
-                                    
-                                    patch = load_patch(repos[product], commit_child, file)    
-                                    if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
-                                        commit_file_diff_json.unlink()
-                                        commit_file_diff_json.touch()
-                                        write_patch_json(commit_file_diff_json, patch)
-                                        commit_file_diff_txt.unlink()
-                                        commit_file_diff_txt.touch()
-                                        write_patch_txt(commit_file_diff_txt, patch) 
-                                    else :
-                                        commit_file_diff_json.touch()
-                                        write_patch_json(commit_file_diff_json, patch)
-                                        commit_file_diff_txt.touch()
-                                        write_patch_txt(commit_file_diff_txt, patch)
-                                    
-                                    datas = get_file_content(repos[product], commit_parent, file)
-                                    if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
-                                        commit_file_bug_json.unlink()
-                                        commit_file_bug_json.touch()
-                                        write_patch_json(commit_file_bug_json, datas)
-                                        commit_file_bug_txt.unlink()
-                                        commit_file_bug_txt.touch()
-                                        write_patch_txt(commit_file_bug_txt, datas) 
-                                    else :
-                                        commit_file_bug_json.touch()
-                                        write_patch_json(commit_file_bug_json, datas)
-                                        commit_file_bug_txt.touch()
-                                        write_patch_txt(commit_file_bug_txt, datas)
-                                    
-                                    datas = get_file_content(repos[product], commit_child, file)
-                                    if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
-                                        commit_file_fixed_json.unlink()
-                                        commit_file_fixed_json.touch()
-                                        write_patch_json(commit_file_fixed_json, datas)
-                                        commit_file_fixed_txt.unlink()
-                                        commit_file_fixed_txt.touch()
-                                        write_patch_txt(commit_file_fixed_txt, datas) 
-                                    else :
-                                        commit_file_fixed_json.touch()
-                                        write_patch_json(commit_file_fixed_json, datas)
-                                        commit_file_fixed_txt.touch()
-                                        write_patch_txt(commit_file_fixed_txt, datas)
+                                    for file in files:
+            
+                                        commit_file_diff_json = cve_patch_directory_json/f"{pr[3]}_D_{file.replace("/",":")}_{commit_child}.json"
+                                        commit_file_diff_txt = cve_patch_directory_txt/f"{pr[3]}_D_{file.replace("/",":")}_{commit_child}.txt"
+                                        
+                                        commit_file_bug_json = cve_patch_directory_json/f"{pr[3]}_V_{file.replace("/",":")}_{commit_child}.json"
+                                        commit_file_bug_txt = cve_patch_directory_txt/f"{pr[3]}_V_{file.replace("/",":")}_{commit_child}.txt"
+                                        
+                                        commit_file_fixed_json = cve_patch_directory_json/f"{pr[3]}_NV_{file.replace("/",":")}_{commit_child}.json"
+                                        commit_file_fixed_txt = cve_patch_directory_txt/f"{pr[3]}_NV_{file.replace("/",":")}_{commit_child}.txt"
+                                        
+                                        patch = load_patch(repos[product], commit_child, file)    
+                                        if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
+                                            commit_file_diff_json.unlink()
+                                            commit_file_diff_json.touch()
+                                            write_patch_json(commit_file_diff_json, patch)
+                                            commit_file_diff_txt.unlink()
+                                            commit_file_diff_txt.touch()
+                                            write_patch_txt(commit_file_diff_txt, patch) 
+                                        else :
+                                            commit_file_diff_json.touch()
+                                            write_patch_json(commit_file_diff_json, patch)
+                                            commit_file_diff_txt.touch()
+                                            write_patch_txt(commit_file_diff_txt, patch)
+                                        
+                                        datas = get_file_content(repos[product], commit_parent, file)
+                                        if commit_file_bug_json.exists() or commit_file_bug_txt.exists():
+                                            commit_file_bug_json.unlink()
+                                            commit_file_bug_json.touch()
+                                            write_patch_json(commit_file_bug_json, datas)
+                                            commit_file_bug_txt.unlink()
+                                            commit_file_bug_txt.touch()
+                                            write_patch_txt(commit_file_bug_txt, datas) 
+                                        else :
+                                            commit_file_bug_json.touch()
+                                            write_patch_json(commit_file_bug_json, datas)
+                                            commit_file_bug_txt.touch()
+                                            write_patch_txt(commit_file_bug_txt, datas)
+                                        
+                                        datas = get_file_content(repos[product], commit_child, file)
+                                        if commit_file_fixed_json.exists() or commit_file_fixed_txt.exists():
+                                            commit_file_fixed_json.unlink()
+                                            commit_file_fixed_json.touch()
+                                            write_patch_json(commit_file_fixed_json, datas)
+                                            commit_file_fixed_txt.unlink()
+                                            commit_file_fixed_txt.touch()
+                                            write_patch_txt(commit_file_fixed_txt, datas) 
+                                        else :
+                                            commit_file_fixed_json.touch()
+                                            write_patch_json(commit_file_fixed_json, datas)
+                                            commit_file_fixed_txt.touch()
+                                            write_patch_txt(commit_file_fixed_txt, datas)
     else:
                 
         tf_repo = Path(repos["tensorflow"])
@@ -616,47 +625,50 @@ def get_modified_file(repository, commit_hash):
     
     
 def parse_zulip_version(repository, version):
+    print(version)
     if "," in version:
-        
         commit_child = re.sub(".*<*\\s", "", version)
-        commit_child = get_commit_hash_from_tag(repository, commit_child)
+        if not is_hexadecimal(commit_child):
+            commit_child = get_commit_hash_from_tag(repository, commit_child)
         commit_parent = get_parent_commit(repository, commit_child)
-         
-        commit_parent = get_commit_hash_from_tag(repository, commit_parent)
-        commit_child = get_commit_hash_from_tag(repository, commit_child)
         
         return commit_parent, commit_child
     else:
         if "<" in version:
             commit_child = re.sub("<*=*\\s", "", version)
-            commit_child = get_commit_hash_from_tag(repository, commit_child)
+            if not is_hexadecimal(commit_child):
+                commit_child = get_commit_hash_from_tag(repository, commit_child)
             commit_parent = get_parent_commit(repository, commit_child)
             return commit_parent, commit_child
         else:
             commit_parent = re.sub("=\\s", "", version)
             commit_child = get_child_commit(repository, commit_parent)
-            
-            commit_parent = get_commit_hash_from_tag(repository, commit_parent)
-            commit_child = get_commit_hash_from_tag(repository, commit_child)
-            return commit_parent, commit_child
+            if commit_child != None :
+                commit_parent = get_commit_hash_from_tag(repository, commit_parent)       
+                commit_child = get_commit_hash_from_tag(repository, commit_child)
+                return commit_parent, commit_child
+            else:
+                return commit_parent, None
 
 def get_child_commit(repository, commit_parent):
     repo = Repo(repository)
-    tags = repo.git.tag("--contains", commit_parent).split("\n")
-
-    recent_semvers = []
-    for tag in tags:
-        tag = re.sub(r"^\D*", "", tag)
-        tag = re.sub(r"[\-a-z].*$", "", tag)
-        if cmp_version(tag, commit_parent) == 1:
-            recent_semvers.append(tag)
-    if not recent_semvers:
+    try:
+        tags = repo.git.tag("--contains", commit_parent).split("\n")
+        recent_semvers = []
+        for tag in tags:
+            tag = re.sub(r"^\D*", "", tag)
+            tag = re.sub(r"[\-a-z].*$", "", tag)
+            if cmp_version(tag, commit_parent) == 1:
+                recent_semvers.append(tag)
+        if not recent_semvers:
+            return None
+        smallest_one = recent_semvers[0]
+        for semver in recent_semvers:
+            if cmp_version(semver, smallest_one) == -1:
+                smallest_one = semver
+        return smallest_one
+    except:
         return None
-    smallest_one = recent_semvers[0]
-    for semver in recent_semvers:
-        if cmp_version(semver, smallest_one) == -1:
-            smallest_one = semver
-    return smallest_one
         
 def get_parent_commit(repository, commit_child):
     repo = Repo(repository)

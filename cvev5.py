@@ -110,9 +110,7 @@ def get_dates(db, product, year):
                     release_date, release_hour = get_release_date_from_commit(repos[product], commit, semvers)
                 else:
                     commit_semver = get_commit_tag(repos[product], commit)
-                    print(commit_semver)
                     child_semver = get_child_commit(repos[product], commit_semver)
-                    print(child_semver)
                     if not child_semver :
                         release_date, release_hour = "Not found", "Not found"
                     else:    
@@ -418,7 +416,6 @@ def create_commit_patch_db(db, product, vendor):
                     for x in pr[1]:
                         if "versions" in x:
                             for y in x["versions"]:
-                                print(pr[3])
                                 commit_parent, commit_child = parse_zulip_version(repos[product],y["version"])
                                 if commit_child != None :
                                     files = get_modified_file(repos[product], commit_child).split("\n")
@@ -625,7 +622,6 @@ def get_modified_file(repository, commit_hash):
     
     
 def parse_zulip_version(repository, version):
-    print(version)
     if "," in version:
         commit_child = re.sub(".*<*\\s", "", version)
         if not is_hexadecimal(commit_child):

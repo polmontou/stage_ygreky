@@ -34,16 +34,18 @@ if __name__ == "__main__":
         minimal_year_wanted = "2018"
     else:
         minimal_year_wanted = "0"
-        
     
-        
     products = []
-
+    
+    print("Initialisation...")
+    initialize(repos_path)
+    print("Initialized")
+    
     print("Updating datas from distant repositories...")
-    for repo in Path(repos_path).iterdir():
+    for repo in repos:
         print(repo)
         try:
-            git_pull_repo(repo)
+            git_pull_repo(repos[repo])
         except:
             print("error")    
     print("Update done")

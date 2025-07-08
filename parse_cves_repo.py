@@ -3,7 +3,7 @@ import os
 import re
 import argparse
 from pathlib import Path
-from cvev5 import git_pull_repo, parse_cve_id_with_year, check_cves_validity, write_stats, parse_cves, create_folders, repos
+from cvev5 import git_pull_repo, parse_cve_id_with_year, check_cves_validity, write_stats, parse_cves, create_folders, initialize, repos_path
 
 
 if __name__ == "__main__":
@@ -27,16 +27,17 @@ if __name__ == "__main__":
 
     products = []
     products_object = {}
+    print("Initialisation...")
+    initialize(repos_path)
+    print("Initialized")
     
     print("Updating datas from distant repositories...")
-
-    for repo in Path.cwd().parent.joinpath("repos").iterdir():
+    for repo in Path(repos_path).iterdir():
         print(repo)
         try:
             git_pull_repo(repo)
         except:
-            print("error")
-        
+            print("error")    
     print("Update done")
 
     print("Loading database...")
@@ -70,13 +71,13 @@ if __name__ == "__main__":
         
     print("Product count: " + str(products_count))
 
-    # check_cves_validity(products, products_object)
+    check_cves_validity(products, products_object)
     parse_cves(products, products_object)
 
 
     create_folders(products_object, quantity)
 
-# products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
+    products_object_sorted = dict(sorted(products_object.items(), key=lambda item : item[1].get_entries(), reverse=True))
 
-# write_stats(products_object_sorted)
+    write_stats(products_object_sorted)
     

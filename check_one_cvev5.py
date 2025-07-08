@@ -5,7 +5,8 @@ import json
 import os
 import re
 import argparse
-from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, get_tensorflow_cve_dates, create_commit_patch_db,repos
+from pathlib import Path
+from cvev5 import parse_cve_id_with_year, get_dates, git_pull_repo, get_tensorflow_cve_dates, create_commit_patch_db, initialize, repos_path, repos
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -37,15 +38,18 @@ if __name__ == "__main__":
     
         
     products = []
-    
+
     print("Updating datas from distant repositories...")
-    
-    for repo in repos :
-        git_pull_repo(repos[repo])
-        
+    for repo in Path(repos_path).iterdir():
+        print(repo)
+        try:
+            git_pull_repo(repo)
+        except:
+            print("error")    
     print("Update done")
     
     print("Loading database...")
+
     if product != "tensorflow": 
         for root, dirnames, filenames in os.walk(input_dir):
             for filename in filenames:

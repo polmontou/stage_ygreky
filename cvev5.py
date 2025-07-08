@@ -14,12 +14,28 @@ from product import product
 
 repos_path = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos"
 repos = { 
-    "cves" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/cvelistV5",
-    "linux" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/linux",
-    "zulip" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/zulip",
-    "tensorflow" : "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/tensorflow"
+    "cvelistV5" : f"{repos_path}/cvelistV5",
+    "linux" : f"{repos_path}/linux",
+    "zulip" : f"{repos_path}/zulip",
+    "tensorflow" : f"{repos_path}/tensorflow"
+}
+distant_repos = {
+    "cvelistV5" : "https://github.com/CVEProject/cvelistV5.git",
+    "linux" : "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git",
+    "zulip" : "https://github.com/zulip/zulip.git",
+    "tensorflow" : "https://github.com/tensorflow/tensorflow.git"
 }
 
+def initialize(repos_path):
+    repos_path = Path(repos_path)
+    repos_path.mkdir(exist_ok=True, parents=True)
+    for repo in repos:
+        project_path = Path(repos[repo])
+        if not project_path.exists():
+           print(f"{repo} getting cloned")
+           Repo.clone_from(distant_repos[repo], project_path)
+           
+    
 def git_pull_repo(path):
     repo = Repo(path)
     repo.remotes.origin.pull()
@@ -143,7 +159,7 @@ def get_tensorflow_cve_dates():
         cve_nr = re.sub(r"\d{3}$", "xxx", cve_nr)
         
         cve_file = f"{cve_id}.json"
-        cves_repo_path = Path(repos["cves"])
+        cves_repo_path = Path(repos["cvelistV5"])
         cves_repo_path = cves_repo_path.joinpath("cves", cve_year, cve_nr, cve_file)
         
         with open(cves_repo_path, "r") as f:
@@ -312,8 +328,8 @@ def create_commit_patch_db(db, product, vendor):
                         files = get_modified_file(repos[product], commit).split("\n")
                         parent_commit = get_parent_commit(repos[product], commit)
                         
-                        metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit}.json")
-                        metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit}.txt")
+                        metadata_commit_file_json = cve_patch_directory_json/(f"{pr[3]}_MD_{commit}.json")
+                        metadata_commit_file_txt = cve_patch_directory_txt/(f"{pr[3]}_MD_{commit}.txt")
                         
                         metadatas = get_commits_metadatas(repos[product], commit)
                         if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
@@ -330,14 +346,14 @@ def create_commit_patch_db(db, product, vendor):
                             write_patch_txt(metadata_commit_file_txt, metadatas)
 
                         for file in files:
-                            commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
-                            commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                            commit_file_diff_json = cve_patch_directory_json/f"{pr[3]}_D_{file.replace("/",":")}_{commit}.json"
+                            commit_file_diff_txt = cve_patch_directory_txt/f"{pr[3]}_D_{file.replace("/",":")}_{commit}.txt"
                             
-                            commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
-                            commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                            commit_file_bug_json = cve_patch_directory_json/f"{pr[3]}_V_{file.replace("/",":")}_{commit}.json"
+                            commit_file_bug_txt = cve_patch_directory_txt/f"{pr[3]}_V_{file.replace("/",":")}_{commit}.txt"
                             
-                            commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
-                            commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+                            commit_file_fixed_json = cve_patch_directory_json/f"{pr[3]}_NV_{file.replace("/",":")}_{commit}.json"
+                            commit_file_fixed_txt = cve_patch_directory_txt/f"{pr[3]}_NV_{file.replace("/",":")}_{commit}.txt"
                             
                             diff = load_patch(repos[product], commit, file)
                             if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
@@ -398,8 +414,8 @@ def create_commit_patch_db(db, product, vendor):
                                 commit_parent, commit_child = parse_zulip_version(repos[product],y["version"])
                                 files = get_modified_file(repos[product], commit_child).split("\n")
                                 
-                                metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit_parent}.json")
-                                metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit_parent}.txt")
+                                metadata_commit_file_json = cve_patch_directory_json/(f"{pr[3]}_MD_{commit_parent}.json")
+                                metadata_commit_file_txt = cve_patch_directory_txt/(f"{pr[3]}_MD_{commit_parent}.txt")
                                 
                                 metadatas = get_commits_metadatas(repos[product], commit_parent)
                                 if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
@@ -417,14 +433,14 @@ def create_commit_patch_db(db, product, vendor):
 
                                 for file in files:
         
-                                    commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit_child}.json"
-                                    commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit_child}.txt"
+                                    commit_file_diff_json = cve_patch_directory_json/f"{pr[3]}_D_{file.replace("/",":")}_{commit_child}.json"
+                                    commit_file_diff_txt = cve_patch_directory_txt/f"{pr[3]}_D_{file.replace("/",":")}_{commit_child}.txt"
                                     
-                                    commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit_child}.json"
-                                    commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit_child}.txt"
+                                    commit_file_bug_json = cve_patch_directory_json/f"{pr[3]}_V_{file.replace("/",":")}_{commit_child}.json"
+                                    commit_file_bug_txt = cve_patch_directory_txt/f"{pr[3]}_V_{file.replace("/",":")}_{commit_child}.txt"
                                     
-                                    commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit_child}.json"
-                                    commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit_child}.txt"
+                                    commit_file_fixed_json = cve_patch_directory_json/f"{pr[3]}_NV_{file.replace("/",":")}_{commit_child}.json"
+                                    commit_file_fixed_txt = cve_patch_directory_txt/f"{pr[3]}_NV_{file.replace("/",":")}_{commit_child}.txt"
                                     
                                     patch = load_patch(repos[product], commit_child, file)    
                                     if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
@@ -485,8 +501,8 @@ def create_commit_patch_db(db, product, vendor):
                 if is_hexadecimal(commit):
                     files = get_modified_file(repos["tensorflow"], commit).split("\n")
                     parent_commit = get_parent_commit(repos["tensorflow"], commit)
-                    metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit}.json")
-                    metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit}.txt")
+                    metadata_commit_file_json = cve_patch_directory_json/(f"{cve_id}_MD_{commit}.json")
+                    metadata_commit_file_txt = cve_patch_directory_txt/(f"{cve_id}_MD_{commit}.txt")
                     
                     metadatas = get_commits_metadatas(repos[product], commit)
                     if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
@@ -511,14 +527,14 @@ def create_commit_patch_db(db, product, vendor):
                             continue
                             
                         if len(file) > 0 and not file.endswith(".bin"):
-                            commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
-                            commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                            commit_file_diff_json = cve_patch_directory_json/f"{cve_id}_D_{file.replace("/",":")}_{commit}.json"
+                            commit_file_diff_txt = cve_patch_directory_txt/f"{cve_id}_D_{file.replace("/",":")}_{commit}.txt"
                             
-                            commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
-                            commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                            commit_file_bug_json = cve_patch_directory_json/f"{cve_id}_V_{file.replace("/",":")}_{commit}.json"
+                            commit_file_bug_txt = cve_patch_directory_txt/f"{cve_id}_V_{file.replace("/",":")}_{commit}.txt"
                             
-                            commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
-                            commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+                            commit_file_fixed_json = cve_patch_directory_json/f"{cve_id}_NV_{file.replace("/",":")}_{commit}.json"
+                            commit_file_fixed_txt = cve_patch_directory_txt/f"{cve_id}_NV_{file.replace("/",":")}_{commit}.txt"
                             
                             diff = load_patch(repos["tensorflow"], commit, file)
                             if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
@@ -741,7 +757,7 @@ def find_dates_and_datas(product: product):
         result_file_path.unlink()
         print(f"\"{result_file_path.name}\" already exists : file deleted")
     result_file_path.touch()
-    print(f"\"{result_file_path.name}\" file created")
+    
     
     pattern = r"https://github\.com/\w*/\w*/commit/(\w*)"
     
@@ -781,8 +797,8 @@ def find_dates_and_datas(product: product):
                             cve_patch_directory_json.mkdir(parents=True)
                             cve_patch_directory_txt.mkdir(parents=True)
                             
-                            metadata_commit_file_json = cve_patch_directory_json/(f"MD_{commit}.json")
-                            metadata_commit_file_txt = cve_patch_directory_txt/(f"MD_{commit}.txt")
+                            metadata_commit_file_json = cve_patch_directory_json/(f"{cve}_MD_{commit}.json")
+                            metadata_commit_file_txt = cve_patch_directory_txt/(f"{cve}_MD_{commit}.txt")
                             
                             metadatas = get_commits_metadatas(repos[product.name], commit)
                             if metadata_commit_file_json.exists() or metadata_commit_file_txt.exists():
@@ -803,14 +819,14 @@ def find_dates_and_datas(product: product):
                             for file in files:
                                 try :
                                     if len(file) > 0 and not file.endswith(".bin"):
-                                        commit_file_diff_json = cve_patch_directory_json/f"D_{file.replace("/",":")}_{commit}.json"
-                                        commit_file_diff_txt = cve_patch_directory_txt/f"D_{file.replace("/",":")}_{commit}.txt"
+                                        commit_file_diff_json = cve_patch_directory_json/f"{cve}_D_{file.replace("/",":")}_{commit}.json"
+                                        commit_file_diff_txt = cve_patch_directory_txt/f"{cve}_D_{file.replace("/",":")}_{commit}.txt"
                                         
-                                        commit_file_bug_json = cve_patch_directory_json/f"V_{file.replace("/",":")}_{commit}.json"
-                                        commit_file_bug_txt = cve_patch_directory_txt/f"V_{file.replace("/",":")}_{commit}.txt"
+                                        commit_file_bug_json = cve_patch_directory_json/f"{cve}_V_{file.replace("/",":")}_{commit}.json"
+                                        commit_file_bug_txt = cve_patch_directory_txt/f"{cve}_V_{file.replace("/",":")}_{commit}.txt"
                                         
-                                        commit_file_fixed_json = cve_patch_directory_json/f"NV_{file.replace("/",":")}_{commit}.json"
-                                        commit_file_fixed_txt = cve_patch_directory_txt/f"NV_{file.replace("/",":")}_{commit}.txt"
+                                        commit_file_fixed_json = cve_patch_directory_json/f"{cve}_NV_{file.replace("/",":")}_{commit}.json"
+                                        commit_file_fixed_txt = cve_patch_directory_txt/f"{cve}_NV_{file.replace("/",":")}_{commit}.txt"
 
                                         diff = load_patch(repos[product.name], commit, file)
                                         if commit_file_diff_json.exists() or commit_file_diff_txt.exists():
@@ -865,7 +881,8 @@ def find_dates_and_datas(product: product):
     if i == 0 :
         result_file_path.unlink()
         result_repo_path.rmdir()
-        
+    else:
+        print(f"\"{result_file_path.name}\" file created")    
 def get_commits_metadatas(repository, commit):
     repo = Repo(repository)
     metadatas = repo.git.show("-s", commit)
@@ -882,8 +899,9 @@ def clone_repo(product: product):
     project_repo = repo_path.joinpath(project)
     
     if not project_repo in repo_path.iterdir():
-        git_url = f"git@github.com:{name}/{project}.git"
+        git_url = f"https://github.com/{name}/{project}.git"
         try:
+            print(f"{project} getting cloned")
             Repo.clone_from(git_url, project_repo)
         except GitCommandError:
             print("Repo unreachable")

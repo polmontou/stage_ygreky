@@ -12,7 +12,7 @@ There's some specific arguments you can/have to pass to the script:
 
 This script clones Linux, Tensorflow and Zulip repos on your device.
 
-    <u>ex :<u> python3 check_one_cvev5.py -i <input_dir> -p linux -y 2025
+<u>ex :<u> python3 check_one_cvev5.py -i <input_dir> -p linux -y 2025
   
 - **parse_cves_repo.py** is made to parse all CVE's entries, seek for a specific pattern in each CVE to see if it can fetch datas from distant repos, if it's the case, it clones distant repo and creates a folder per poduct in which we will have the same datas than in the precedent script (except release date of each commit).
 This script also creates a .csv file which gives statistics about CVEs, it counts for each product how many entries there are, it gives a fiability rate (correct entries(vendor and product != "n/a") / total entries), and the number of URL which contains "/commit/".
@@ -22,10 +22,10 @@ Here, you hace to specify :
 
 This script clones all the products' repo it will find.
 
-    <u>ex :<u> python3 parse_cves_repo.py -i <input_dir> -q 30
+<u>ex :<u> python3 parse_cves_repo.py -i <input_dir> -q 30
   
 # You have to :
 
 - Download the all the libraries in **requirements.txt**.
     
-- Modify path in **cvev5.py**, at the beginnig of the script in **repos_path** (where you want those scripts to clone distant repos)
+- Modify pathes in **cvev5.py**, at the beginnig of the script in *repos_path* (where you want this scripts to clone distant repos)

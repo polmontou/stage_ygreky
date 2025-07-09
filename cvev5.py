@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: Copyright 2024 Marta Rybczynska
 # $ git init 
+import shutil
 import json
 import re
 import csv
@@ -532,7 +533,7 @@ def create_commit_patch_db(db, product, vendor):
                         if match:
                             continue
                             
-                        if len(file) > 0 and not file.endswith(".bin"):
+                        if not file.endswith(".bin"):
                             commit_file_diff_json = cve_patch_directory_json/f"{cve_id}_D_{file.replace("/",":")}_{commit}.json"
                             commit_file_diff_txt = cve_patch_directory_txt/f"{cve_id}_D_{file.replace("/",":")}_{commit}.txt"
                             
@@ -618,7 +619,9 @@ def get_file_content(repository, commit_hash, file_name):
 def get_modified_file(repository, commit_hash):
     repo = Repo(repository)
     file = repo.git.show('--name-only','--pretty=format:', commit_hash)
-    return file
+    if file[0] != "" :
+        return file
+    return None
     
     
 def parse_zulip_version(repository, version):
@@ -748,11 +751,14 @@ def create_folders(products_object, quantity):
     i = 0
     for prod in products_object: 
             if products_object[prod].commit_url > 0 and i < int(quantity):
+                i += 1  
                 path = Path.cwd().joinpath("resultats", products_object[prod].name.replace("/", ":"))
                 path.mkdir(parents = True, exist_ok = True)
+                print(f"Cloning and parsing {prod}.....{i}/{quantity}")
                 clone_repo(products_object[prod])
                 find_dates_and_datas(products_object[prod])
-                i += 1                
+                print(f"{prod} cloned and parsed")
+              
 
                 
 def find_dates_and_datas(product: product):
@@ -763,38 +769,37 @@ def find_dates_and_datas(product: product):
  
     if result_file_path.exists():
         result_file_path.unlink()
-        print(f"\"{result_file_path.name}\" already exists : file deleted")
     result_file_path.touch()
     
     
     pattern = r"https://github\.com/\w*/\w*/commit/(\w*)"
     
     i = 0
+    
     for cve in product.cves:
         if "urls" in product.cves[cve]:
             try :
                 # looking for CVE publication date
                 cve_date, cve_hour = parse_date(product.cves[cve]["publication_date"])
-                    #writing them in the CSV file
+                    # writing them in the CSV file
                 line_datas = [cve,"CVE", "PD", cve_date, cve_hour, "-","-","-"]
                 write_datas(result_file_path, line_datas)
                 
                 for url in product.cves[cve]["urls"]:
-            
                     match = re.match(pattern, url)
                     commit = match.group(1)
                     if match: 
                         author_date, author_hour = get_author_date_from_commit(repos[product.name], commit)
                         committer_date, committer_hour = get_committer_date_from_commit(repos[product.name], commit)
                         
-                        #writing dates in CSV file
+                        # writing dates in CSV file
                         line_datas = [cve, commit, "AD", author_date, author_hour, "CD", committer_date, committer_hour]
                         write_datas(result_file_path, line_datas)
                         del author_date, author_hour, committer_date, committer_hour
                         
                         i += 1
                         
-                        files = get_modified_file(repos[product.name], commit).split("\n")                        
+                        files = get_modified_file(repos[product.name], commit).split("\n")                       
                         parent_commit = get_parent_commit(repos[product.name], commit)
 
 
@@ -802,8 +807,8 @@ def find_dates_and_datas(product: product):
                             
                             cve_patch_directory_json = datas_file_path.joinpath("JSON")
                             cve_patch_directory_txt = datas_file_path.joinpath("TXT")
-                            cve_patch_directory_json.mkdir(parents=True)
-                            cve_patch_directory_txt.mkdir(parents=True)
+                            Path(cve_patch_directory_json).mkdir(parents=True, exist_ok=True)
+                            Path(cve_patch_directory_txt).mkdir(parents=True, exist_ok=True)
                             
                             metadata_commit_file_json = cve_patch_directory_json/(f"{cve}_MD_{commit}.json")
                             metadata_commit_file_txt = cve_patch_directory_txt/(f"{cve}_MD_{commit}.txt")
@@ -816,17 +821,15 @@ def find_dates_and_datas(product: product):
                                 metadata_commit_file_txt.unlink()
                                 metadata_commit_file_txt.touch()
                                 write_patch_txt(metadata_commit_file_txt, metadatas) 
+                                
                             else :
                                 metadata_commit_file_json.touch()
                                 write_patch_json(metadata_commit_file_json, metadatas)
                                 metadata_commit_file_txt.touch()
                                 write_patch_txt(metadata_commit_file_txt, metadatas)
                             
-                            
-                            
                             for file in files:
-                                try :
-                                    if len(file) > 0 and not file.endswith(".bin"):
+                                    if not file.endswith(".bin"):
                                         commit_file_diff_json = cve_patch_directory_json/f"{cve}_D_{file.replace("/",":")}_{commit}.json"
                                         commit_file_diff_txt = cve_patch_directory_txt/f"{cve}_D_{file.replace("/",":")}_{commit}.txt"
                                         
@@ -881,16 +884,17 @@ def find_dates_and_datas(product: product):
                                             write_patch_json(commit_file_fixed_json, datas)
                                             commit_file_fixed_txt.touch()
                                             write_patch_txt(commit_file_fixed_txt, datas)
-                                except:
-                                    continue
-                        
+                           
             except Exception as e:
                 continue
+            
     if i == 0 :
         result_file_path.unlink()
         result_repo_path.rmdir()
-    else:
-        print(f"\"{result_file_path.name}\" file created")    
+    elif len(list(cve_patch_directory_json.iterdir())) == 1 and len(list(cve_patch_directory_txt.iterdir())) == 1:
+        current_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"))
+        shutil.rmtree(current_path)
+           
 def get_commits_metadatas(repository, commit):
     repo = Repo(repository)
     metadatas = repo.git.show("-s", commit)

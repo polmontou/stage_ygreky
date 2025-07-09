@@ -23,20 +23,20 @@ if __name__ == "__main__":
         minimal_year_wanted = args.minimal_year_wanted
     else:
         minimal_year_wanted = str(0)
-        
-
+# input_dir = "/home/paul.montoussy@Digital-Grenoble.local/gittedbase/stage/repos/cvelistV5"   
+# quantity = 50    
+# minimal_year_wanted = str(0)
     products = []
     products_object = {}
     print("Initialisation...")
     initialize(repos_path)
     print("Initialized")
-    
+
     print("Updating datas from distant repositories...")
     i = 0
     for repo in Path(repos_path).iterdir():
         i += 1
-        print(f"Updating {repo.name}")
-        print(f"{i}/{len(list(Path(repos_path).iterdir()))}")
+        print(f"Updating {repo.name}.....{i}/{len(list(Path(repos_path).iterdir()))}")
         try:
             git_pull_repo(repo)
         except:

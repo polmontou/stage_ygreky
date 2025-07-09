@@ -754,10 +754,9 @@ def create_folders(products_object, quantity):
                 i += 1  
                 path = Path.cwd().joinpath("resultats", products_object[prod].name.replace("/", ":"))
                 path.mkdir(parents = True, exist_ok = True)
-                print(f"Cloning and parsing {prod}.....{i}/{quantity}")
+                print(f"Parsing {prod}.....{i}/{quantity}")
                 clone_repo(products_object[prod])
                 find_dates_and_datas(products_object[prod])
-                print(f"{prod} cloned and parsed")
               
 
                 
@@ -805,8 +804,8 @@ def find_dates_and_datas(product: product):
 
                         if len(files) > 0:
                             
-                            cve_patch_directory_json = datas_file_path.joinpath("JSON")
-                            cve_patch_directory_txt = datas_file_path.joinpath("TXT")
+                            cve_patch_directory_json = Path(datas_file_path).joinpath("JSON")
+                            cve_patch_directory_txt = Path(datas_file_path).joinpath("TXT")
                             Path(cve_patch_directory_json).mkdir(parents=True, exist_ok=True)
                             Path(cve_patch_directory_txt).mkdir(parents=True, exist_ok=True)
                             
@@ -888,12 +887,14 @@ def find_dates_and_datas(product: product):
             except Exception as e:
                 continue
             
-    if i == 0 :
-        result_file_path.unlink()
-        result_repo_path.rmdir()
-    elif len(list(cve_patch_directory_json.iterdir())) == 1 and len(list(cve_patch_directory_txt.iterdir())) == 1:
-        current_path = Path.cwd().joinpath("resultats", product.name.replace("/", ":"))
-        shutil.rmtree(current_path)
+    if len(list(result_repo_path.iterdir())) == 1:
+        shutil.rmtree(result_repo_path)
+    else :  
+        if i == 0 :
+            result_file_path.unlink()
+            result_repo_path.rmdir()
+
+
            
 def get_commits_metadatas(repository, commit):
     repo = Repo(repository)
@@ -913,10 +914,10 @@ def clone_repo(product: product):
     if not project_repo in repo_path.iterdir():
         git_url = f"https://null:null@github.com/{name}/{project}.git"
         try:
-            print(f"{project} getting cloned")
             Repo.clone_from(git_url, project_repo)
         except GitCommandError or GitError :
             print("Repo unreachable")
+
     repos[project.lower()] = f"{project_repo}"
 
      

@@ -886,13 +886,12 @@ def find_dates_and_datas(product: product):
                            
             except Exception as e:
                 continue
-            
+                
     if len(list(result_repo_path.iterdir())) == 1:
         shutil.rmtree(result_repo_path)
     else :  
         if i == 0 :
-            result_file_path.unlink()
-            result_repo_path.rmdir()
+            shutil.rmtree(result_repo_path)
 
 
            

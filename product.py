@@ -26,3 +26,4 @@ class product:
     def get_fiability_rate(self):
         rate = (self.valid_entries_count/self.entries_count)
         return rate 
+    

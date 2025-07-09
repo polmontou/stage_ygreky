@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import UTC
-from git import Repo, GitCommandError
+from git import Repo, GitCommandError, GitError
 from cmp_version import cmp_version
 from product import product
 
@@ -907,11 +907,11 @@ def clone_repo(product: product):
     project_repo = repo_path.joinpath(project)
     
     if not project_repo in repo_path.iterdir():
-        git_url = f"https://github.com/{name}/{project}.git"
+        git_url = f"https://null:null@github.com/{name}/{project}.git"
         try:
             print(f"{project} getting cloned")
             Repo.clone_from(git_url, project_repo)
-        except GitCommandError:
+        except GitCommandError or GitError :
             print("Repo unreachable")
     repos[project.lower()] = f"{project_repo}"
 
